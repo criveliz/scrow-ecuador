@@ -1,4 +1,5 @@
 import pg from "pg";
+import { DataType, newDb } from "pg-mem";
 
 export interface DbQueryResult<T = any> {
   rows: T[];
@@ -57,6 +58,43 @@ export class PgDbClient implements DbClient {
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+}
+
+export class PgMemDbClient implements DbClient {
+  private memDb: any;
+  private client: any;
+
+  constructor() {
+    this.memDb = newDb();
+    this.memDb.public.registerFunction({
+      name: "gen_random_uuid",
+      returns: DataType.uuid,
+      implementation: () => crypto.randomUUID(),
+    });
+    const { Client } = this.memDb.adapters.createPg();
+    this.client = new Client();
+    this.client.connect();
+  }
+
+  async query<T = any>(sql: string, params: any[] = []): Promise<DbQueryResult<T>> {
+    const res = await this.client.query(sql, params);
+    return {
+      rows: (res.rows ?? []) as T[],
+      rowCount: res.rowCount ?? res.rows?.length ?? 0,
+    };
+  }
+
+  async transaction<T>(callback: (tx: DbClient) => Promise<T>): Promise<T> {
+    try {
+      await this.client.query("BEGIN");
+      const result = await callback(this);
+      await this.client.query("COMMIT");
+      return result;
+    } catch (err) {
+      await this.client.query("ROLLBACK");
+      throw err;
+    }
   }
 }
 

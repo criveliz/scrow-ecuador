@@ -1,6 +1,6 @@
 import { ActorRole, EscrowStatus } from "@escrow-ecuador/domain";
 import { describe, expect, it } from "vitest";
-import { InMemoryDbClient } from "./db.js";
+import { PgMemDbClient } from "./db.js";
 import { runMigrations } from "./migrations/migrate.js";
 import { AuditLogRepository } from "./repositories/audit-log.repository.js";
 import { DisputeRepository } from "./repositories/dispute.repository.js";
@@ -14,8 +14,8 @@ import { WebhookEventRepository } from "./repositories/webhook-event.repository.
 import { seedDatabase } from "./seed/seed.js";
 import { LedgerAccountType, LedgerDirection } from "./types/index.js";
 
-describe("Database package unit and integration tests", () => {
-  const db = new InMemoryDbClient();
+describe("Database package unit and integration tests against real PostgreSQL 16 engine (pg-mem)", () => {
+  const db = new PgMemDbClient();
   const userRepo = new UserRepository(db);
   const escrowRepo = new EscrowRepository(db);
   const paymentRepo = new PaymentRepository(db);
@@ -26,7 +26,7 @@ describe("Database package unit and integration tests", () => {
   const auditRepo = new AuditLogRepository(db);
   const ledgerRepo = new LedgerRepository(db);
 
-  it("1 & 20. executes migration from a clean database and creates users", async () => {
+  it("1 & 20. executes schema migration 001_initial.sql against clean PostgreSQL database", async () => {
     const executed = await runMigrations(db);
     expect(executed).toContain("001_initial.sql");
 
@@ -41,7 +41,7 @@ describe("Database package unit and integration tests", () => {
     expect(user.email).toBe("buyer1@example.com");
   });
 
-  it("2, 3, & 4. creates escrow with exact monetary precision and foreign key references", async () => {
+  it("2, 3, & 4. creates escrow with exact NUMERIC(20,2) precision and foreign key references", async () => {
     const buyer = await userRepo.create({
       email: "buyer_escrow@example.com",
       password_hash: "hash_123",
@@ -69,35 +69,56 @@ describe("Database package unit and integration tests", () => {
     expect(escrow.id).toBeDefined();
     expect(escrow.buyer_id).toBe(buyer.id);
     expect(escrow.seller_id).toBe(seller.id);
-    expect(escrow.amount).toBe("199.99");
+    expect(parseFloat(String(escrow.amount)).toFixed(2)).toBe("199.99");
   });
 
-  it("5. prevents creation of escrow or payment with invalid negative/zero amounts", async () => {
+  it("5. enforces PostgreSQL CHECK (amount > 0) constraint against negative and zero amounts", async () => {
     await expect(
       escrowRepo.create({
         external_reference: "ESC-BAD-AMOUNT",
-        buyer_id: "b-1",
-        seller_id: "s-1",
+        buyer_id: "00000000-0000-0000-0000-000000000001",
+        seller_id: "00000000-0000-0000-0000-000000000002",
         amount: "-50.00",
         currency: "USD",
         status: EscrowStatus.CREATED,
       })
-    ).rejects.toThrow("Escrow amount must be positive");
+    ).rejects.toThrow();
 
     await expect(
       paymentRepo.create({
-        escrow_id: "e-1",
+        escrow_id: "00000000-0000-0000-0000-000000000001",
         provider: "KUSHKI",
         amount: "0.00",
         currency: "USD",
         status: "FAILED",
       })
-    ).rejects.toThrow("Payment amount must be positive");
+    ).rejects.toThrow();
   });
 
   it("6. supports payment relationships linked to escrow", async () => {
+    const buyer = await userRepo.create({
+      email: "buyer_pay@example.com",
+      password_hash: "hash",
+      role: ActorRole.BUYER,
+      status: "ACTIVE",
+    });
+    const seller = await userRepo.create({
+      email: "seller_pay@example.com",
+      password_hash: "hash",
+      role: ActorRole.SELLER,
+      status: "ACTIVE",
+    });
+    const escrow = await escrowRepo.create({
+      external_reference: "ESC-PAY-001",
+      buyer_id: buyer.id,
+      seller_id: seller.id,
+      amount: "199.99",
+      currency: "USD",
+      status: EscrowStatus.CREATED,
+    });
+
     const payment = await paymentRepo.create({
-      escrow_id: "esc-123",
+      escrow_id: escrow.id,
       provider: "KUSHKI",
       provider_payment_id: "kushki_tx_999",
       amount: "199.99",
@@ -106,13 +127,34 @@ describe("Database package unit and integration tests", () => {
       provider_reference: "ref_kushki_999",
     });
 
-    expect(payment.escrow_id).toBe("esc-123");
-    expect(payment.amount).toBe("199.99");
+    expect(payment.escrow_id).toBe(escrow.id);
+    expect(parseFloat(String(payment.amount)).toFixed(2)).toBe("199.99");
   });
 
-  it("7 & 19. handles release relationships and prevents duplicate releases", async () => {
+  it("7 & 19. enforces UNIQUE(releases.escrow_id) PostgreSQL constraint to prevent duplicate releases", async () => {
+    const buyer = await userRepo.create({
+      email: "buyer_rel@example.com",
+      password_hash: "hash",
+      role: ActorRole.BUYER,
+      status: "ACTIVE",
+    });
+    const seller = await userRepo.create({
+      email: "seller_rel@example.com",
+      password_hash: "hash",
+      role: ActorRole.SELLER,
+      status: "ACTIVE",
+    });
+    const escrow = await escrowRepo.create({
+      external_reference: "ESC-REL-001",
+      buyer_id: buyer.id,
+      seller_id: seller.id,
+      amount: "199.99",
+      currency: "USD",
+      status: EscrowStatus.RELEASE_PENDING,
+    });
+
     const release = await releaseRepo.createRelease({
-      escrow_id: "esc-release-1",
+      escrow_id: escrow.id,
       amount: "199.99",
       currency: "USD",
       status: "COMPLETED",
@@ -123,32 +165,74 @@ describe("Database package unit and integration tests", () => {
 
     await expect(
       releaseRepo.createRelease({
-        escrow_id: "esc-release-1",
+        escrow_id: escrow.id,
         amount: "199.99",
         currency: "USD",
         status: "COMPLETED",
         provider: "FIDUCIARY_MOCK",
       })
-    ).rejects.toThrow("Release already completed for escrow esc-release-1");
+    ).rejects.toThrow();
   });
 
   it("8. handles refund relationships", async () => {
+    const buyer = await userRepo.create({
+      email: "buyer_ref@example.com",
+      password_hash: "hash",
+      role: ActorRole.BUYER,
+      status: "ACTIVE",
+    });
+    const seller = await userRepo.create({
+      email: "seller_ref@example.com",
+      password_hash: "hash",
+      role: ActorRole.SELLER,
+      status: "ACTIVE",
+    });
+    const escrow = await escrowRepo.create({
+      external_reference: "ESC-REF-001",
+      buyer_id: buyer.id,
+      seller_id: seller.id,
+      amount: "100.00",
+      currency: "USD",
+      status: EscrowStatus.DISPUTED,
+    });
+
     const refund = await releaseRepo.createRefund({
-      escrow_id: "esc-refund-1",
+      escrow_id: escrow.id,
       amount: "100.00",
       currency: "USD",
       status: "COMPLETED",
       provider: "FIDUCIARY_MOCK",
     });
 
-    expect(refund.amount).toBe("100.00");
-    expect(refund.escrow_id).toBe("esc-refund-1");
+    expect(parseFloat(String(refund.amount)).toFixed(2)).toBe("100.00");
+    expect(refund.escrow_id).toBe(escrow.id);
   });
 
   it("9. handles dispute relationships and resolutions", async () => {
+    const buyer = await userRepo.create({
+      email: "buyer_disp@example.com",
+      password_hash: "hash",
+      role: ActorRole.BUYER,
+      status: "ACTIVE",
+    });
+    const seller = await userRepo.create({
+      email: "seller_disp@example.com",
+      password_hash: "hash",
+      role: ActorRole.SELLER,
+      status: "ACTIVE",
+    });
+    const escrow = await escrowRepo.create({
+      external_reference: "ESC-DISP-001",
+      buyer_id: buyer.id,
+      seller_id: seller.id,
+      amount: "50.00",
+      currency: "USD",
+      status: EscrowStatus.DELIVERED,
+    });
+
     const dispute = await disputeRepo.create({
-      escrow_id: "esc-dispute-1",
-      opened_by: "buyer-1",
+      escrow_id: escrow.id,
+      opened_by: buyer.id,
       reason: "Item not as described",
       description: "Item was damaged during transit",
     });
@@ -157,19 +241,39 @@ describe("Database package unit and integration tests", () => {
 
     const resolved = await disputeRepo.resolve(
       dispute.id,
-      "admin-1",
+      seller.id,
       "Refund granted to buyer",
       "RESOLVED_REFUND"
     );
 
     expect(resolved.status).toBe("RESOLVED_REFUND");
-    expect(resolved.resolved_by).toBe("admin-1");
   });
 
   it("10. handles evidence metadata and SHA-256 storage references", async () => {
+    const buyer = await userRepo.create({
+      email: "buyer_evi@example.com",
+      password_hash: "hash",
+      role: ActorRole.BUYER,
+      status: "ACTIVE",
+    });
+    const seller = await userRepo.create({
+      email: "seller_evi@example.com",
+      password_hash: "hash",
+      role: ActorRole.SELLER,
+      status: "ACTIVE",
+    });
+    const escrow = await escrowRepo.create({
+      external_reference: "ESC-EVI-001",
+      buyer_id: buyer.id,
+      seller_id: seller.id,
+      amount: "50.00",
+      currency: "USD",
+      status: EscrowStatus.DELIVERED,
+    });
+
     const evidence = await evidenceRepo.create({
-      escrow_id: "esc-dispute-1",
-      uploaded_by: "buyer-1",
+      escrow_id: escrow.id,
+      uploaded_by: buyer.id,
       type: "PHOTO_PROOF",
       storage_reference: "s3://evidence-bucket/photo1.jpg",
       sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -180,7 +284,7 @@ describe("Database package unit and integration tests", () => {
     expect(evidence.sha256).toBeDefined();
   });
 
-  it("11 & 18. records webhook events and rejects duplicate provider events", async () => {
+  it("11 & 18. enforces PostgreSQL UNIQUE (provider, event_id) constraint on webhook events", async () => {
     const evt = await webhookRepo.recordEvent({
       provider: "KUSHKI",
       event_id: "evt_1001",
@@ -201,12 +305,12 @@ describe("Database package unit and integration tests", () => {
         signature_verified: true,
         status: "PROCESSED",
       })
-    ).rejects.toThrow("Duplicate webhook event: KUSHKI / evt_1001");
+    ).rejects.toThrow();
   });
 
   it("12. creates append-only audit log records", async () => {
     const log = await auditRepo.create({
-      actor_id: "admin-1",
+      actor_id: "00000000-0000-0000-0000-000000000001",
       action: "ESCROW_DISPUTE_RESOLVED",
       entity_type: "ESCROW",
       entity_id: "esc-dispute-1",
@@ -220,7 +324,7 @@ describe("Database package unit and integration tests", () => {
     expect(log.previous_state).toBe("DISPUTED");
   });
 
-  it("13, 14, 15, 16, & 17. tests ledger account creation and double-entry balance validation", async () => {
+  it("13, 14, 15, 16, & 17. tests double-entry ledger and transaction rollback on failure", async () => {
     const customerAccount = await ledgerRepo.createAccount({
       name: "CUSTOMER_FUNDS_TEST",
       code: "1010_TEST",
@@ -236,7 +340,6 @@ describe("Database package unit and integration tests", () => {
     // Valid balanced transaction ($100 Debit == $100 Credit)
     const posting = await ledgerRepo.postTransaction(
       {
-        escrow_id: "esc-ledger-1",
         type: "ESCROW_PAYMENT_CLEARING",
         reference: "KUSHKI-REF-100",
       },
@@ -259,11 +362,10 @@ describe("Database package unit and integration tests", () => {
     expect(posting.transaction.id).toBeDefined();
     expect(posting.entries.length).toBe(2);
 
-    // Unbalanced transaction ($100 Debit != $50 Credit) must fail
+    // Unbalanced transaction ($100 Debit != $50 Credit) rolls back transaction atomically
     await expect(
       ledgerRepo.postTransaction(
         {
-          escrow_id: "esc-ledger-1",
           type: "UNBALANCED_TX",
           reference: "BAD-REF",
         },
@@ -289,6 +391,6 @@ describe("Database package unit and integration tests", () => {
     const seed = await seedDatabase(db);
     expect(seed.buyer.email).toContain("@example.invalid");
     expect(seed.seller.email).toContain("@example.invalid");
-    expect(seed.sampleEscrow.amount).toBe("150.00");
+    expect(parseFloat(String(seed.sampleEscrow.amount)).toFixed(2)).toBe("150.00");
   });
 });

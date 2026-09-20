@@ -1,8 +1,6 @@
 -- PostgreSQL 16 Schema Migration: 001_initial.sql
 -- Escrow Ecuador Financial Core Schema
 
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
-
 -- Users
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

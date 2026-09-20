@@ -6,6 +6,20 @@ import {
   LedgerTransaction,
 } from "../types/index.js";
 
+/**
+ * Converts a monetary string (e.g. "123.45") into BigInt cents (12345n)
+ * without floating-point binary conversion errors.
+ */
+function parseAmountToCents(amountStr: string): bigint {
+  const trimmed = amountStr.trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+    throw new Error(`Invalid monetary amount format: '${amountStr}'`);
+  }
+  const [dollars, cents = ""] = trimmed.split(".");
+  const paddedCents = cents.padEnd(2, "0");
+  return BigInt(dollars) * 100n + BigInt(paddedCents);
+}
+
 export class LedgerRepository {
   constructor(private readonly db: DbClient) {}
 
@@ -34,6 +48,11 @@ export class LedgerRepository {
     return res.rows[0] ?? null;
   }
 
+  /**
+   * Posts a double-entry ledger transaction.
+   * Enforces exact decimal balancing using BigInt integer-cents arithmetic.
+   * Note: Ledger records are append-only. No UPDATE or DELETE methods exist.
+   */
   async postTransaction(
     txData: Omit<LedgerTransaction, "id" | "created_at">,
     entriesData: Array<Omit<LedgerEntry, "id" | "ledger_transaction_id" | "created_at">>
@@ -42,32 +61,30 @@ export class LedgerRepository {
       throw new Error("Double-entry transaction must contain at least 2 entries");
     }
 
-    // Double-entry validation: Total Debits must equal Total Credits
-    let totalDebit = 0;
-    let totalCredit = 0;
+    // Double-entry validation: Total Debits must equal Total Credits using BigInt cents
+    let totalDebitCents = 0n;
+    let totalCreditCents = 0n;
 
     for (const entry of entriesData) {
-      const amount = parseFloat(entry.amount);
-      if (isNaN(amount) || amount <= 0) {
+      const amountCents = parseAmountToCents(entry.amount);
+      if (amountCents <= 0n) {
         throw new Error("Ledger entry amount must be positive");
       }
 
       if (entry.direction === LedgerDirection.DEBIT) {
-        totalDebit += amount;
+        totalDebitCents += amountCents;
       } else if (entry.direction === LedgerDirection.CREDIT) {
-        totalCredit += amount;
+        totalCreditCents += amountCents;
       } else {
         throw new Error(`Invalid ledger entry direction: ${entry.direction}`);
       }
     }
 
-    // Fixed precision comparison (2 decimal places)
-    const debitFormatted = totalDebit.toFixed(2);
-    const creditFormatted = totalCredit.toFixed(2);
-
-    if (debitFormatted !== creditFormatted) {
+    if (totalDebitCents !== totalCreditCents) {
+      const debitStr = (Number(totalDebitCents) / 100).toFixed(2);
+      const creditStr = (Number(totalCreditCents) / 100).toFixed(2);
       throw new Error(
-        `Unbalanced double-entry transaction! Debits (${debitFormatted}) != Credits (${creditFormatted})`
+        `Unbalanced double-entry transaction! Debits (${debitStr}) != Credits (${creditStr})`
       );
     }
 
@@ -99,7 +116,8 @@ export class LedgerRepository {
 
       for (const entryData of entriesData) {
         const entryId = crypto.randomUUID();
-        const entryAmountFormatted = parseFloat(entryData.amount).toFixed(2);
+        const amountCents = parseAmountToCents(entryData.amount);
+        const formattedAmount = (Number(amountCents) / 100).toFixed(2);
 
         const entrySql = `
           INSERT INTO ledger_entries (id, ledger_transaction_id, ledger_account_id, direction, amount, currency, created_at)
@@ -111,7 +129,7 @@ export class LedgerRepository {
           txId,
           entryData.ledger_account_id,
           entryData.direction,
-          entryAmountFormatted,
+          formattedAmount,
           entryData.currency ?? "USD",
           now,
         ];
