@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { EscrowStatus, assertTransition, canTransition } from "./state-machine";
+import { EscrowStatus, assertTransition, canTransition } from "./state-machine.js";
 
 describe("escrow state machine", () => {
   it("allows the normal happy path", () => {

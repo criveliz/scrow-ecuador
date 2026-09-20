@@ -1,4 +1,4 @@
-import type { FiduciaryProvider, PaymentProvider } from "./interfaces";
+import type { FiduciaryProvider, PaymentProvider } from "./interfaces.js";
 
 export class MockPaymentProvider implements PaymentProvider {
   async createPaymentIntent(input: {
