@@ -60,6 +60,22 @@ export class EscrowRepository {
     return res.rows[0] ?? null;
   }
 
+  async findByUserId(userId: string): Promise<EscrowTransaction[]> {
+    const sql = `
+      SELECT * FROM escrow_transactions
+      WHERE buyer_id = $1 OR seller_id = $1
+      ORDER BY created_at DESC
+    `;
+    const res = await this.db.query<EscrowTransaction>(sql, [userId]);
+    return res.rows;
+  }
+
+  async findAll(): Promise<EscrowTransaction[]> {
+    const sql = `SELECT * FROM escrow_transactions ORDER BY created_at DESC`;
+    const res = await this.db.query<EscrowTransaction>(sql, []);
+    return res.rows;
+  }
+
   async transitionStatus(params: StateTransitionParams): Promise<EscrowTransaction> {
     // 1. Validate transition using domain state machine
     const validatedTransition = executeTransition(params);
