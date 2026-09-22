@@ -20,6 +20,7 @@ export enum ActorRole {
   SELLER = "SELLER",
   SUPPORT = "SUPPORT",
   ADMIN = "ADMIN",
+  SUPER_ADMIN = "SUPER_ADMIN",
   SYSTEM = "SYSTEM",
 }
 
@@ -93,44 +94,44 @@ export const ALLOWED_TRANSITIONS: Record<
   Partial<Record<EscrowStatus, ActorRole[]>>
 > = {
   [EscrowStatus.CREATED]: {
-    [EscrowStatus.AWAITING_PAYMENT]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.AWAITING_PAYMENT]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.AWAITING_PAYMENT]: {
-    [EscrowStatus.PAYMENT_RECEIVED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.EXPIRED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.PAYMENT_RECEIVED]: [ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.EXPIRED]: [ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.PAYMENT_RECEIVED]: {
-    [EscrowStatus.FUNDS_CONFIRMED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.FUNDS_CONFIRMED]: [ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.FUNDS_CONFIRMED]: {
     [EscrowStatus.SELLER_ACCEPTED]: [ActorRole.SELLER],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.SELLER_ACCEPTED]: {
-    [EscrowStatus.DELIVERY_PENDING]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DELIVERY_PENDING]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.DELIVERY_PENDING]: {
-    [EscrowStatus.DELIVERED]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DELIVERED]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.DELIVERED]: {
     [EscrowStatus.BUYER_CONFIRMED]: [ActorRole.BUYER],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.BUYER_CONFIRMED]: {
-    [EscrowStatus.RELEASE_PENDING]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.RELEASE_PENDING]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.RELEASE_PENDING]: {
-    [EscrowStatus.RELEASED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.RELEASED]: [ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
+    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN, ActorRole.SUPER_ADMIN],
   },
   [EscrowStatus.DISPUTED]: {
-    [EscrowStatus.RELEASE_PENDING]: [ActorRole.ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
-    [EscrowStatus.REFUNDED]: [ActorRole.ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
+    [EscrowStatus.RELEASE_PENDING]: [ActorRole.ADMIN, ActorRole.SUPER_ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
+    [EscrowStatus.REFUNDED]: [ActorRole.ADMIN, ActorRole.SUPER_ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
   },
   [EscrowStatus.RELEASED]: {},
   [EscrowStatus.REFUNDED]: {},

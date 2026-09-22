@@ -10,8 +10,8 @@ import {
  * Converts a monetary string (e.g. "123.45") into BigInt cents (12345n)
  * without floating-point binary conversion errors.
  */
-function parseAmountToCents(amountStr: string): bigint {
-  const trimmed = amountStr.trim();
+function parseAmountToCents(amountStr: string | number): bigint {
+  const trimmed = String(amountStr).trim();
   if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
     throw new Error(`Invalid monetary amount format: '${amountStr}'`);
   }
@@ -149,5 +149,11 @@ export class LedgerRepository {
     const sql = `SELECT * FROM ledger_entries WHERE ledger_transaction_id = $1`;
     const res = await this.db.query<LedgerEntry>(sql, [transactionId]);
     return res.rows;
+  }
+
+  async findTransactionByReference(reference: string): Promise<LedgerTransaction | null> {
+    const sql = `SELECT * FROM ledger_transactions WHERE reference = $1`;
+    const res = await this.db.query<LedgerTransaction>(sql, [reference]);
+    return res.rows[0] ?? null;
   }
 }
