@@ -3,6 +3,7 @@ export * from "./types/index.js";
 export * from "./migrations/migrate.js";
 
 export * from "./repositories/user.repository.js";
+export * from "./repositories/refresh-token.repository.js";
 export * from "./repositories/escrow.repository.js";
 export * from "./repositories/payment.repository.js";
 export * from "./repositories/release.repository.js";
