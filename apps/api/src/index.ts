@@ -6,6 +6,10 @@ import { handleAuthRoutes } from "./auth/auth.router.js";
 import { AuthService } from "./auth/auth.service.js";
 
 export function createApiServer(dbClient?: PgMemDbClient) {
+  if (process.env.NODE_ENV === "production" && (!process.env.JWT_SECRET || process.env.JWT_SECRET.trim() === "")) {
+    throw new Error("FATAL: JWT_SECRET environment variable is strictly required in production!");
+  }
+
   const db = dbClient || new PgMemDbClient();
   const userRepo = new UserRepository(db);
   const refreshTokenRepo = new RefreshTokenRepository(db);

@@ -14,6 +14,21 @@ export interface TokenPayload {
 
 const DEFAULT_SECRET = "escrow-ecuador-dev-jwt-secret-do-not-use-in-production";
 
+function getJwtSecret(overrideSecret?: string): string {
+  if (overrideSecret) return overrideSecret;
+
+  const envSecret = process.env.JWT_SECRET;
+  if (envSecret && envSecret.trim() !== "") {
+    return envSecret;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("FATAL: JWT_SECRET environment variable is strictly required in production!");
+  }
+
+  return DEFAULT_SECRET;
+}
+
 function base64UrlEncode(str: string): string {
   return Buffer.from(str)
     .toString("base64")
@@ -42,8 +57,9 @@ function signPayload(headerAndPayload: string, secret: string): string {
 export function generateToken(
   payload: Omit<TokenPayload, "iat" | "exp">,
   expiresInSeconds: number,
-  secret: string = process.env.JWT_SECRET || DEFAULT_SECRET
+  secret?: string
 ): string {
+  const activeSecret = getJwtSecret(secret);
   const now = Math.floor(Date.now() / 1000);
   const fullPayload: TokenPayload = {
     ...payload,
@@ -56,15 +72,16 @@ export function generateToken(
   const encodedHeader = base64UrlEncode(JSON.stringify(header));
   const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
 
-  const signature = signPayload(`${encodedHeader}.${encodedPayload}`, secret);
+  const signature = signPayload(`${encodedHeader}.${encodedPayload}`, activeSecret);
 
   return `${encodedHeader}.${encodedPayload}.${signature}`;
 }
 
 export function verifyToken(
   token: string,
-  secret: string = process.env.JWT_SECRET || DEFAULT_SECRET
+  secret?: string
 ): TokenPayload {
+  const activeSecret = getJwtSecret(secret);
   if (!token) {
     throw new Error("Token is required");
   }
@@ -76,7 +93,7 @@ export function verifyToken(
 
   const [encodedHeader, encodedPayload, signature] = parts;
 
-  const expectedSignature = signPayload(`${encodedHeader}.${encodedPayload}`, secret);
+  const expectedSignature = signPayload(`${encodedHeader}.${encodedPayload}`, activeSecret);
 
   const sigBuf = Buffer.from(signature);
   const expectedSigBuf = Buffer.from(expectedSignature);

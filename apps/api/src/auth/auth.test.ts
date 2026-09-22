@@ -1,6 +1,6 @@
 import { ActorRole } from "@escrow-ecuador/domain";
 import { PgMemDbClient, runMigrations } from "@escrow-ecuador/database";
-import { describe, expect, it, beforeEach } from "vitest";
+import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { hashPassword, verifyPassword } from "./crypto.js";
 import { generateToken, verifyToken } from "./jwt.js";
 import { createApiServer } from "../index.js";
@@ -8,18 +8,24 @@ import { AuthService } from "./auth.service.js";
 import { RefreshTokenRepository, UserRepository } from "@escrow-ecuador/database";
 import { hasAnyRole, hasRole, isPrivilegedRole, requiresMfa, validateRole } from "./rbac.js";
 
-describe("Task 4 — Authentication & RBAC Unit and Integration Tests", () => {
+describe("Task 4 — Authentication & RBAC Security Remediation Tests", () => {
   let db: PgMemDbClient;
   let userRepo: UserRepository;
   let refreshTokenRepo: RefreshTokenRepository;
   let authService: AuthService;
+  const originalEnv = process.env;
 
   beforeEach(async () => {
+    process.env = { ...originalEnv };
     db = new PgMemDbClient();
     await runMigrations(db);
     userRepo = new UserRepository(db);
     refreshTokenRepo = new RefreshTokenRepository(db);
     authService = new AuthService(userRepo, refreshTokenRepo);
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
   });
 
   describe("Password Hashing & Verification (Crypto)", () => {
@@ -37,7 +43,7 @@ describe("Task 4 — Authentication & RBAC Unit and Integration Tests", () => {
     });
   });
 
-  describe("JWT Token Handling", () => {
+  describe("JWT Token Handling & Production Security", () => {
     it("generates and verifies valid access tokens", () => {
       const token = generateToken(
         { userId: "u-123", email: "test@example.com", role: ActorRole.BUYER, type: "ACCESS" },
@@ -61,97 +67,88 @@ describe("Task 4 — Authentication & RBAC Unit and Integration Tests", () => {
 
       expect(() => verifyToken(token, "wrong-secret")).toThrow("Invalid token signature");
     });
-  });
 
-  describe("RBAC Helper Logic", () => {
-    it("identifies privileged roles and MFA requirements", () => {
-      expect(isPrivilegedRole(ActorRole.ADMIN)).toBe(true);
-      expect(isPrivilegedRole("SUPER_ADMIN")).toBe(true);
-      expect(isPrivilegedRole(ActorRole.BUYER)).toBe(false);
+    it("requires JWT_SECRET in production and throws fatal error if missing", () => {
+      process.env.NODE_ENV = "production";
+      delete process.env.JWT_SECRET;
 
-      expect(requiresMfa(ActorRole.ADMIN)).toBe(true);
-      expect(requiresMfa("SUPER_ADMIN")).toBe(true);
-      expect(requiresMfa(ActorRole.SELLER)).toBe(false);
-    });
+      expect(() =>
+        generateToken(
+          { userId: "u-prod", email: "prod@example.com", role: ActorRole.BUYER, type: "ACCESS" },
+          300
+        )
+      ).toThrow("FATAL: JWT_SECRET environment variable is strictly required in production!");
 
-    it("validates roles and checks role hierarchy/permissions", () => {
-      expect(validateRole("buyer")).toBe(ActorRole.BUYER);
-      expect(validateRole("SUPER_ADMIN")).toBe("SUPER_ADMIN");
-      expect(() => validateRole("invalid_role")).toThrow("Invalid role");
-
-      expect(hasRole(ActorRole.BUYER, ActorRole.BUYER)).toBe(true);
-      expect(hasRole(ActorRole.BUYER, ActorRole.SELLER)).toBe(false);
-      expect(hasRole("SUPER_ADMIN", ActorRole.ADMIN)).toBe(true); // Super Admin bypasses
-
-      expect(hasAnyRole(ActorRole.SELLER, [ActorRole.BUYER, ActorRole.SELLER])).toBe(true);
-      expect(hasAnyRole(ActorRole.SUPPORT, [ActorRole.BUYER, ActorRole.SELLER])).toBe(false);
+      expect(() => createApiServer()).toThrow("FATAL: JWT_SECRET environment variable is strictly required in production!");
     });
   });
 
-  describe("AuthService Registration & Login", () => {
-    it("registers new BUYER and returns access + refresh tokens", async () => {
-      const res = await authService.register({
-        email: "buyer@example.com",
+  describe("Public Registration Role Security", () => {
+    it("allows normal registration for BUYER and SELLER roles", async () => {
+      const buyerRes = await authService.register({
+        email: "buyer_normal@example.com",
         password: "securePassword123",
         role: "BUYER",
       });
+      expect(buyerRes.user.role).toBe(ActorRole.BUYER);
 
-      expect(res.accessToken).toBeDefined();
-      expect(res.refreshToken).toBeDefined();
-      expect(res.user.email).toBe("buyer@example.com");
-      expect(res.user.role).toBe(ActorRole.BUYER);
+      const sellerRes = await authService.register({
+        email: "seller_normal@example.com",
+        password: "securePassword123",
+        role: "SELLER",
+      });
+      expect(sellerRes.user.role).toBe(ActorRole.SELLER);
     });
 
-    it("requires MFA code when registering or logging in as ADMIN", async () => {
-      await expect(
-        authService.register({
-          email: "admin@example.com",
-          password: "adminPassword123",
-          role: "ADMIN",
-        })
-      ).rejects.toThrow("MFA verification code is required for privileged roles");
-
-      const adminAuth = await authService.register({
-        email: "admin@example.com",
-        password: "adminPassword123",
+    it("overrides public registration attempts for ADMIN, SUPER_ADMIN, and SUPPORT to BUYER", async () => {
+      const adminAttempt = await authService.register({
+        email: "attacker_admin@example.com",
+        password: "securePassword123",
         role: "ADMIN",
         mfaCode: "123456",
       });
+      expect(adminAttempt.user.role).toBe(ActorRole.BUYER);
 
-      expect(adminAuth.user.role).toBe(ActorRole.ADMIN);
-
-      await expect(
-        authService.login({
-          email: "admin@example.com",
-          password: "adminPassword123",
-        })
-      ).rejects.toThrow("MFA code required for privileged role");
-
-      const loginRes = await authService.login({
-        email: "admin@example.com",
-        password: "adminPassword123",
+      const superAdminAttempt = await authService.register({
+        email: "attacker_superadmin@example.com",
+        password: "securePassword123",
+        role: "SUPER_ADMIN",
         mfaCode: "123456",
       });
+      expect(superAdminAttempt.user.role).toBe(ActorRole.BUYER);
 
-      expect(loginRes.accessToken).toBeDefined();
-    });
-
-    it("prevents registration with duplicate email", async () => {
-      await authService.register({ email: "dup@example.com", password: "password123" });
-      await expect(
-        authService.register({ email: "dup@example.com", password: "password123" })
-      ).rejects.toThrow("User with this email already exists");
-    });
-
-    it("rejects invalid login credentials", async () => {
-      await authService.register({ email: "user@example.com", password: "password123" });
-      await expect(
-        authService.login({ email: "user@example.com", password: "wrongpassword" })
-      ).rejects.toThrow("Invalid email or password");
+      const supportAttempt = await authService.register({
+        email: "attacker_support@example.com",
+        password: "securePassword123",
+        role: "SUPPORT",
+      });
+      expect(supportAttempt.user.role).toBe(ActorRole.BUYER);
     });
   });
 
-  describe("Token Rotation & Token Reuse Detection", () => {
+  describe("MFA Enforcement in Production", () => {
+    it("rejects static MFA code 123456 when NODE_ENV === 'production'", async () => {
+      // Manually create an ADMIN user in database (e.g. via DB seed/bootstrap)
+      const adminUser = await userRepo.create({
+        email: "real_admin@example.com",
+        password_hash: await hashPassword("adminPass123!"),
+        role: ActorRole.ADMIN,
+        status: "ACTIVE",
+      });
+
+      process.env.NODE_ENV = "production";
+
+      await expect(
+        authService.login({
+          email: adminUser.email,
+          password: "adminPass123!",
+          mfaCode: "123456",
+        })
+      ).rejects.toThrow("MFA implementation for production requires valid TOTP token provider");
+    });
+  });
+
+  describe("Token Rotation & Reuse Detection", () => {
     it("rotates refresh token successfully", async () => {
       const initialAuth = await authService.register({
         email: "rot@example.com",

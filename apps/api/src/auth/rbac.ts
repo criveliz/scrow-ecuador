@@ -5,9 +5,16 @@ export interface Permission {
   action: "create" | "read" | "update" | "delete" | "manage";
 }
 
-export const PRIVILEGED_ROLES: ReadonlySet<ActorRole> = new Set([
+export const PRIVILEGED_ROLES: ReadonlySet<ActorRole | string> = new Set([
   ActorRole.ADMIN,
   ActorRole.SYSTEM,
+  ActorRole.SUPPORT,
+  "SUPER_ADMIN",
+]);
+
+export const PUBLIC_REGISTRATION_ROLES: ReadonlySet<ActorRole | string> = new Set([
+  ActorRole.BUYER,
+  ActorRole.SELLER,
 ]);
 
 export const ALL_ROLES: ReadonlySet<ActorRole | string> = new Set([

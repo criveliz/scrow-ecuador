@@ -56,16 +56,15 @@ export class AuthService {
       throw new Error("User with this email already exists");
     }
 
-    const role = validateRole(data.role || ActorRole.BUYER);
-
-    // If privileged role requires MFA check, verify code if needed
-    let mfaVerified = false;
-    if (requiresMfa(role)) {
-      if (!data.mfaCode || data.mfaCode !== "123456") {
-        throw new Error("MFA verification code is required for privileged roles");
-      }
-      mfaVerified = true;
+    // Enforce Public Registration Role Security:
+    // Public registration via /api/v1/auth/register ONLY allows BUYER or SELLER.
+    // Any requested administrative/privileged role (ADMIN, SUPER_ADMIN, SUPPORT, SYSTEM) is overridden to BUYER.
+    let role = validateRole(data.role || ActorRole.BUYER);
+    if (requiresMfa(role) || role === ActorRole.SUPPORT || role === ActorRole.SYSTEM) {
+      role = ActorRole.BUYER;
     }
+
+    let mfaVerified = false;
 
     const passwordHash = await hashPassword(data.password);
 
@@ -97,6 +96,10 @@ export class AuthService {
 
     let mfaVerified = false;
     if (requiresMfa(user.role)) {
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("MFA implementation for production requires valid TOTP token provider");
+      }
+
       if (!data.mfaCode || data.mfaCode !== "123456") {
         throw new Error("MFA code required for privileged role");
       }
