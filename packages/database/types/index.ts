@@ -85,8 +85,10 @@ export interface Dispute {
   reason: string;
   description?: string | null;
   status?: string;
+  assigned_to?: string | null;
   resolved_by?: string | null;
   resolution?: string | null;
+  resolution_reason?: string | null;
   opened_at?: Date | string;
   resolved_at?: Date | string | null;
   created_at: Date | string;
@@ -98,10 +100,70 @@ export interface Evidence {
   escrow_id: string;
   uploaded_by: string;
   type: string;
+  description?: string | null;
   storage_reference: string;
   sha256?: string | null;
+  mime_type?: string;
+  file_size?: number | string;
+  original_filename?: string | null;
+  captured_at?: Date | string | null;
+  status?: string;
+  visibility?: string;
+  replaced_by_id?: string | null;
+  ip_address?: string | null;
+  user_agent?: string | null;
   metadata?: Record<string, unknown> | null;
   created_at: Date | string;
+}
+
+export interface EvidenceAccessEvent {
+  id: string;
+  evidence_id: string;
+  actor_id?: string | null;
+  action: string;
+  ip_address?: string | null;
+  user_agent?: string | null;
+  accessed_at: Date | string;
+}
+
+export interface DisputeEvent {
+  id: string;
+  dispute_id: string;
+  previous_status?: string | null;
+  new_status: string;
+  actor_id?: string | null;
+  actor_role: ActorRole | string;
+  action: string;
+  reason?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: Date | string;
+}
+
+export interface DisputeEvidence {
+  id: string;
+  dispute_id: string;
+  evidence_id: string;
+  requested_by?: string | null;
+  submitted_by: string;
+  created_at: Date | string;
+}
+
+export interface DisputeAssignment {
+  id: string;
+  dispute_id: string;
+  assigned_to: string;
+  assigned_by: string;
+  assigned_at: Date | string;
+}
+
+export interface DisputeDeadline {
+  id: string;
+  dispute_id: string;
+  deadline_type: string;
+  due_at: Date | string;
+  status: string;
+  created_at: Date | string;
+  expired_at?: Date | string | null;
 }
 
 export interface Notification {
