@@ -285,7 +285,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
   });
 
   it("11 & 18. enforces PostgreSQL UNIQUE (provider, event_id) constraint on webhook events", async () => {
-    const evt = await webhookRepo.recordEvent({
+    const res1 = await webhookRepo.recordEvent({
       provider: "KUSHKI",
       event_id: "evt_1001",
       event_type: "transaction.processed",
@@ -294,18 +294,20 @@ describe("Database package unit and integration tests against real PostgreSQL 16
       status: "PROCESSED",
     });
 
-    expect(evt.event_id).toBe("evt_1001");
+    expect(res1.event.event_id).toBe("evt_1001");
+    expect(res1.isDuplicate).toBe(false);
 
-    await expect(
-      webhookRepo.recordEvent({
-        provider: "KUSHKI",
-        event_id: "evt_1001",
-        event_type: "transaction.processed",
-        payload: { transaction_id: "tx_123", status: "approval" },
-        signature_verified: true,
-        status: "PROCESSED",
-      })
-    ).rejects.toThrow();
+    const res2 = await webhookRepo.recordEvent({
+      provider: "KUSHKI",
+      event_id: "evt_1001",
+      event_type: "transaction.processed",
+      payload: { transaction_id: "tx_123", status: "approval" },
+      signature_verified: true,
+      status: "PROCESSED",
+    });
+
+    expect(res2.event.event_id).toBe("evt_1001");
+    expect(res2.isDuplicate).toBe(true);
   });
 
   it("12. creates append-only audit log records", async () => {
