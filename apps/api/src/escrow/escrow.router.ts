@@ -96,7 +96,7 @@ export function handleEscrowRoutes(
   }
 
   // Route 3: POST /api/v1/escrows/:id/actions
-  const actionMatch = urlPath.match(/^\/api\/v1\/escrows\/([a-f0-9-]+)\/actions$/i);
+  const actionMatch = urlPath.match(/^\/api\/v1\/escrows\/([^/]+)\/actions$/i);
   if (method === "POST" && actionMatch) {
     if (!authenticateMiddleware(req, res)) return true;
 
@@ -121,7 +121,7 @@ export function handleEscrowRoutes(
   }
 
   // Route 4: GET /api/v1/escrows/:id/history
-  const historyMatch = urlPath.match(/^\/api\/v1\/escrows\/([a-f0-9-]+)\/history$/i);
+  const historyMatch = urlPath.match(/^\/api\/v1\/escrows\/([^/]+)\/history$/i);
   if (method === "GET" && historyMatch) {
     if (!authenticateMiddleware(req, res)) return true;
 
@@ -140,7 +140,7 @@ export function handleEscrowRoutes(
   }
 
   // Route 5: GET /api/v1/escrows/:id
-  const getMatch = urlPath.match(/^\/api\/v1\/escrows\/([a-f0-9-]+)$/i);
+  const getMatch = urlPath.match(/^\/api\/v1\/escrows\/([^/]+)$/i);
   if (method === "GET" && getMatch) {
     if (!authenticateMiddleware(req, res)) return true;
 

@@ -5,3 +5,7 @@ dist/
 *.tsbuildinfo
 *.js.map
 *.d.ts.map
+apps/**/*.js
+apps/**/*.d.ts
+packages/**/*.js
+packages/**/*.d.ts

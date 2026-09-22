@@ -41,6 +41,12 @@ export class PaymentRepository {
     throw new Error("Failed to create payment record");
   }
 
+  async findById(id: string): Promise<Payment | null> {
+    const sql = `SELECT * FROM payments WHERE id = $1`;
+    const res = await this.db.query<Payment>(sql, [id]);
+    return res.rows[0] ?? null;
+  }
+
   async findByEscrowId(escrowId: string): Promise<Payment[]> {
     const sql = `SELECT * FROM payments WHERE escrow_id = $1 ORDER BY created_at DESC`;
     const res = await this.db.query<Payment>(sql, [escrowId]);

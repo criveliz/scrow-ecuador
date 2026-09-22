@@ -1,18 +1,35 @@
+export type PaymentStatusType =
+  | "PENDING"
+  | "PROCESSING"
+  | "APPROVED"
+  | "DECLINED"
+  | "FAILED"
+  | "CANCELLED";
+
 export interface PaymentIntent {
   providerReference: string;
   amount: string;
   currency: "USD";
-  status: "PENDING" | "PAID" | "FAILED";
+  status: PaymentStatusType;
   paymentUrl?: string;
+  token?: string;
+  checkoutData?: Record<string, unknown>;
+  rawResponse?: Record<string, unknown>;
+}
+
+export interface InitiatePaymentInput {
+  escrowId: string;
+  amount: string;
+  currency: "USD";
+  idempotencyKey: string;
+  token?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface PaymentProvider {
-  createPaymentIntent(input: {
-    escrowId: string;
-    amount: string;
-    currency: "USD";
-    idempotencyKey: string;
-  }): Promise<PaymentIntent>;
+  createPaymentIntent(input: InitiatePaymentInput): Promise<PaymentIntent>;
+
+  getPaymentStatus?(providerReference: string): Promise<PaymentIntent>;
 
   verifyWebhook(input: {
     rawBody: string;
