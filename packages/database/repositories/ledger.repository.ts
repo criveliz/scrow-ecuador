@@ -1,21 +1,22 @@
 import { DbClient } from "../db.js";
 import {
   LedgerAccount,
+  LedgerAccountType,
   LedgerDirection,
   LedgerEntry,
   LedgerTransaction,
 } from "../types/index.js";
 
 /**
- * Converts a monetary string (e.g. "123.45") into BigInt cents (12345n)
+ * Converts a monetary string or number (e.g. "123.45" or 123.45) into BigInt cents (12345n)
  * without floating-point binary conversion errors.
  */
-function parseAmountToCents(amountStr: string): bigint {
-  const trimmed = amountStr.trim();
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
-    throw new Error(`Invalid monetary amount format: '${amountStr}'`);
+function parseAmountToCents(amountInput: string | number): bigint {
+  const strVal = String(amountInput).trim();
+  if (!/^\d+(\.\d{1,2})?$/.test(strVal)) {
+    throw new Error(`Invalid monetary amount format: '${amountInput}'`);
   }
-  const [dollars, cents = ""] = trimmed.split(".");
+  const [dollars, cents = ""] = strVal.split(".");
   const paddedCents = cents.padEnd(2, "0");
   return BigInt(dollars) * 100n + BigInt(paddedCents);
 }
@@ -46,6 +47,20 @@ export class LedgerRepository {
     const sql = `SELECT * FROM ledger_accounts WHERE name = $1`;
     const res = await this.db.query<LedgerAccount>(sql, [name]);
     return res.rows[0] ?? null;
+  }
+
+  async findAccountByCode(code: string): Promise<LedgerAccount | null> {
+    const sql = `SELECT * FROM ledger_accounts WHERE code = $1`;
+    const res = await this.db.query<LedgerAccount>(sql, [code]);
+    return res.rows[0] ?? null;
+  }
+
+  async getAccountByCode(code: string): Promise<LedgerAccount> {
+    const account = await this.findAccountByCode(code);
+    if (!account) {
+      throw new Error(`Ledger account with code ${code} not found`);
+    }
+    return account;
   }
 
   /**
