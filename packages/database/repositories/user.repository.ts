@@ -17,7 +17,7 @@ export class UserRepository {
       user.email,
       user.phone ?? null,
       user.password_hash,
-      user.role,
+      user.role ?? "BUYER",
       user.status,
       now,
       now,

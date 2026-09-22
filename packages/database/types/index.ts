@@ -58,6 +58,9 @@ export interface Release {
   status: string;
   provider: string;
   provider_release_id?: string | null;
+  idempotency_key?: string | null;
+  failure_code?: string | null;
+  failure_reason?: string | null;
   requested_at?: Date | string;
   completed_at?: Date | string | null;
   created_at: Date | string;
@@ -72,6 +75,9 @@ export interface Refund {
   status: string;
   provider: string;
   provider_refund_id?: string | null;
+  idempotency_key?: string | null;
+  failure_code?: string | null;
+  failure_reason?: string | null;
   requested_at?: Date | string;
   completed_at?: Date | string | null;
   created_at: Date | string;
