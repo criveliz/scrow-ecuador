@@ -1,0 +1,97 @@
+import { createHmac, randomBytes, timingSafeEqual } from "crypto";
+import { ActorRole } from "@escrow-ecuador/domain";
+
+export interface TokenPayload {
+  userId: string;
+  email: string;
+  role: ActorRole | string;
+  mfaVerified?: boolean;
+  type: "ACCESS" | "REFRESH";
+  iat: number;
+  exp: number;
+  jti?: string;
+}
+
+const DEFAULT_SECRET = "escrow-ecuador-dev-jwt-secret-do-not-use-in-production";
+
+function base64UrlEncode(str: string): string {
+  return Buffer.from(str)
+    .toString("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+function base64UrlDecode(str: string): string {
+  let base64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4) {
+    base64 += "=";
+  }
+  return Buffer.from(base64, "base64").toString("utf-8");
+}
+
+function signPayload(headerAndPayload: string, secret: string): string {
+  return createHmac("sha256", secret)
+    .update(headerAndPayload)
+    .digest("base64")
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+}
+
+export function generateToken(
+  payload: Omit<TokenPayload, "iat" | "exp">,
+  expiresInSeconds: number,
+  secret: string = process.env.JWT_SECRET || DEFAULT_SECRET
+): string {
+  const now = Math.floor(Date.now() / 1000);
+  const fullPayload: TokenPayload = {
+    ...payload,
+    iat: now,
+    exp: now + expiresInSeconds,
+    jti: payload.jti || randomBytes(16).toString("hex"),
+  };
+
+  const header = { alg: "HS256", typ: "JWT" };
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedPayload = base64UrlEncode(JSON.stringify(fullPayload));
+
+  const signature = signPayload(`${encodedHeader}.${encodedPayload}`, secret);
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`;
+}
+
+export function verifyToken(
+  token: string,
+  secret: string = process.env.JWT_SECRET || DEFAULT_SECRET
+): TokenPayload {
+  if (!token) {
+    throw new Error("Token is required");
+  }
+
+  const parts = token.split(".");
+  if (parts.length !== 3) {
+    throw new Error("Invalid token format");
+  }
+
+  const [encodedHeader, encodedPayload, signature] = parts;
+
+  const expectedSignature = signPayload(`${encodedHeader}.${encodedPayload}`, secret);
+
+  const sigBuf = Buffer.from(signature);
+  const expectedSigBuf = Buffer.from(expectedSignature);
+
+  if (sigBuf.length !== expectedSigBuf.length || !timingSafeEqual(sigBuf, expectedSigBuf)) {
+    throw new Error("Invalid token signature");
+  }
+
+  const payloadStr = base64UrlDecode(encodedPayload);
+  const payload = JSON.parse(payloadStr) as TokenPayload;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp && payload.exp < now) {
+    throw new Error("Token expired");
+  }
+
+  return payload;
+}
