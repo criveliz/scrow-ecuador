@@ -1,0 +1,181 @@
+export var EscrowStatus;
+(function (EscrowStatus) {
+    EscrowStatus["CREATED"] = "CREATED";
+    EscrowStatus["AWAITING_PAYMENT"] = "AWAITING_PAYMENT";
+    EscrowStatus["PAYMENT_RECEIVED"] = "PAYMENT_RECEIVED";
+    EscrowStatus["FUNDS_CONFIRMED"] = "FUNDS_CONFIRMED";
+    EscrowStatus["SELLER_ACCEPTED"] = "SELLER_ACCEPTED";
+    EscrowStatus["DELIVERY_PENDING"] = "DELIVERY_PENDING";
+    EscrowStatus["DELIVERED"] = "DELIVERED";
+    EscrowStatus["BUYER_CONFIRMED"] = "BUYER_CONFIRMED";
+    EscrowStatus["RELEASE_PENDING"] = "RELEASE_PENDING";
+    EscrowStatus["RELEASED"] = "RELEASED";
+    EscrowStatus["DISPUTED"] = "DISPUTED";
+    EscrowStatus["REFUNDED"] = "REFUNDED";
+    EscrowStatus["EXPIRED"] = "EXPIRED";
+    EscrowStatus["CANCELLED"] = "CANCELLED";
+})(EscrowStatus || (EscrowStatus = {}));
+export var ActorRole;
+(function (ActorRole) {
+    ActorRole["BUYER"] = "BUYER";
+    ActorRole["SELLER"] = "SELLER";
+    ActorRole["SUPPORT"] = "SUPPORT";
+    ActorRole["ADMIN"] = "ADMIN";
+    ActorRole["SYSTEM"] = "SYSTEM";
+})(ActorRole || (ActorRole = {}));
+export class InvalidStateTransitionError extends Error {
+    previousState;
+    newState;
+    constructor(previousState, newState, message) {
+        super(message ?? `Invalid escrow state transition from ${previousState} to ${newState}`);
+        this.previousState = previousState;
+        this.newState = newState;
+        this.name = "InvalidStateTransitionError";
+    }
+}
+export class UnauthorizedActorError extends Error {
+    actorRole;
+    previousState;
+    newState;
+    constructor(actorRole, previousState, newState, message) {
+        super(message ??
+            `Actor role '${actorRole}' is not authorized to transition escrow state from ${previousState} to ${newState}`);
+        this.actorRole = actorRole;
+        this.previousState = previousState;
+        this.newState = newState;
+        this.name = "UnauthorizedActorError";
+    }
+}
+export class TerminalStateError extends Error {
+    currentState;
+    constructor(currentState, message) {
+        super(message ?? `Cannot transition out of terminal state: ${currentState}`);
+        this.currentState = currentState;
+        this.name = "TerminalStateError";
+    }
+}
+export class InvalidTransitionPayloadError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "InvalidTransitionPayloadError";
+    }
+}
+export const TERMINAL_STATES = new Set([
+    EscrowStatus.RELEASED,
+    EscrowStatus.REFUNDED,
+    EscrowStatus.EXPIRED,
+    EscrowStatus.CANCELLED,
+]);
+export const ALLOWED_TRANSITIONS = {
+    [EscrowStatus.CREATED]: {
+        [EscrowStatus.AWAITING_PAYMENT]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.AWAITING_PAYMENT]: {
+        [EscrowStatus.PAYMENT_RECEIVED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.EXPIRED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.PAYMENT_RECEIVED]: {
+        [EscrowStatus.FUNDS_CONFIRMED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.FUNDS_CONFIRMED]: {
+        [EscrowStatus.SELLER_ACCEPTED]: [ActorRole.SELLER],
+        [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.SELLER_ACCEPTED]: {
+        [EscrowStatus.DELIVERY_PENDING]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.DELIVERY_PENDING]: {
+        [EscrowStatus.DELIVERED]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.DELIVERED]: {
+        [EscrowStatus.BUYER_CONFIRMED]: [ActorRole.BUYER],
+        [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.BUYER_CONFIRMED]: {
+        [EscrowStatus.RELEASE_PENDING]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.RELEASE_PENDING]: {
+        [EscrowStatus.RELEASED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
+        [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    },
+    [EscrowStatus.DISPUTED]: {
+        [EscrowStatus.RELEASE_PENDING]: [ActorRole.ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
+        [EscrowStatus.REFUNDED]: [ActorRole.ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
+    },
+    [EscrowStatus.RELEASED]: {},
+    [EscrowStatus.REFUNDED]: {},
+    [EscrowStatus.EXPIRED]: {},
+    [EscrowStatus.CANCELLED]: {},
+};
+export function isTerminalState(status) {
+    return TERMINAL_STATES.has(status);
+}
+export function canTransition(from, to) {
+    const allowed = ALLOWED_TRANSITIONS[from];
+    return Boolean(allowed && allowed[to]);
+}
+export function isAllowedActorForTransition(from, to, role) {
+    const allowed = ALLOWED_TRANSITIONS[from];
+    if (!allowed)
+        return false;
+    const roles = allowed[to];
+    if (!roles)
+        return false;
+    return roles.includes(role);
+}
+export function validateTransition(params) {
+    const { transactionId, previousState, newState, actorId, actorRole, timestamp, reason } = params;
+    if (!transactionId || transactionId.trim() === "") {
+        throw new InvalidTransitionPayloadError("Transaction ID is required");
+    }
+    if (!actorId || actorId.trim() === "") {
+        throw new InvalidTransitionPayloadError("Actor ID is required");
+    }
+    if (!reason || reason.trim() === "") {
+        throw new InvalidTransitionPayloadError("Transition reason is required");
+    }
+    if (!timestamp) {
+        throw new InvalidTransitionPayloadError("Timestamp is required");
+    }
+    const dateVal = new Date(timestamp);
+    if (isNaN(dateVal.getTime())) {
+        throw new InvalidTransitionPayloadError("Invalid timestamp provided");
+    }
+    if (isTerminalState(previousState)) {
+        throw new TerminalStateError(previousState);
+    }
+    if (!canTransition(previousState, newState)) {
+        throw new InvalidStateTransitionError(previousState, newState);
+    }
+    if (!isAllowedActorForTransition(previousState, newState, actorRole)) {
+        throw new UnauthorizedActorError(actorRole, previousState, newState);
+    }
+}
+export function executeTransition(params) {
+    validateTransition(params);
+    const isoTimestamp = new Date(params.timestamp).toISOString();
+    return {
+        transactionId: params.transactionId,
+        previousState: params.previousState,
+        newState: params.newState,
+        actorId: params.actorId,
+        actorRole: params.actorRole,
+        timestamp: isoTimestamp,
+        reason: params.reason,
+        ...(params.metadata ? { metadata: params.metadata } : {}),
+    };
+}
+export function assertTransition(from, to) {
+    if (isTerminalState(from)) {
+        throw new TerminalStateError(from);
+    }
+    if (!canTransition(from, to)) {
+        throw new InvalidStateTransitionError(from, to);
+    }
+}
+//# sourceMappingURL=state-machine.js.map
