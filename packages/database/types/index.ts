@@ -196,3 +196,21 @@ export interface LedgerEntry {
   currency: string;
   created_at: Date | string;
 }
+
+export interface VerificationRecord {
+  id: string;
+  escrow_id?: string | null;
+  party_id?: string | null;
+  provider: string;
+  verification_type: string;
+  status: string;
+  provider_reference?: string | null;
+  request_hash?: string | null;
+  response_hash?: string | null;
+  verified_at?: Date | string | null;
+  cost_tokens?: string | number | null;
+  raw_response_location?: string | null;
+  raw_response?: Record<string, unknown> | null;
+  created_at: Date | string;
+  updated_at: Date | string;
+}

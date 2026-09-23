@@ -11,3 +11,4 @@ export * from "./repositories/evidence.repository.js";
 export * from "./repositories/webhook-event.repository.js";
 export * from "./repositories/audit-log.repository.js";
 export * from "./repositories/ledger.repository.js";
+export * from "./repositories/verification.repository.js";

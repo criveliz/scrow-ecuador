@@ -4,7 +4,9 @@ import { Refund, Release } from "../types/index.js";
 export class ReleaseRepository {
   constructor(private readonly db: DbClient) {}
 
-  async createRelease(data: Omit<Release, "id" | "created_at" | "updated_at">): Promise<Release> {
+  async createRelease(
+    data: Omit<Release, "id" | "created_at" | "updated_at">,
+  ): Promise<Release> {
     const amountNum = parseFloat(data.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       throw new Error("Release amount must be positive");
@@ -12,7 +14,9 @@ export class ReleaseRepository {
 
     // Check for existing release on this escrow to prevent duplicate release
     const existing = await this.findByEscrowId(data.escrow_id);
-    const completedRelease = existing.find((r) => r.status === "COMPLETED" || r.status === "SUCCESS");
+    const completedRelease = existing.find(
+      (r) => r.status === "COMPLETED" || r.status === "SUCCESS",
+    );
     if (completedRelease) {
       throw new Error(`Release already completed for escrow ${data.escrow_id}`);
     }
@@ -48,7 +52,9 @@ export class ReleaseRepository {
     throw new Error("Failed to create release record");
   }
 
-  async createRefund(data: Omit<Refund, "id" | "created_at" | "updated_at">): Promise<Refund> {
+  async createRefund(
+    data: Omit<Refund, "id" | "created_at" | "updated_at">,
+  ): Promise<Refund> {
     const amountNum = parseFloat(data.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       throw new Error("Refund amount must be positive");

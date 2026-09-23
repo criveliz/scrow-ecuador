@@ -4,7 +4,9 @@ import { Payment } from "../types/index.js";
 export class PaymentRepository {
   constructor(private readonly db: DbClient) {}
 
-  async create(data: Omit<Payment, "id" | "created_at" | "updated_at">): Promise<Payment> {
+  async create(
+    data: Omit<Payment, "id" | "created_at" | "updated_at">,
+  ): Promise<Payment> {
     const amountNum = parseFloat(data.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
       throw new Error("Payment amount must be positive");
@@ -47,7 +49,10 @@ export class PaymentRepository {
     return res.rows;
   }
 
-  async findByProviderReference(provider: string, ref: string): Promise<Payment | null> {
+  async findByProviderReference(
+    provider: string,
+    ref: string,
+  ): Promise<Payment | null> {
     const sql = `SELECT * FROM payments WHERE provider = $1 AND provider_reference = $2`;
     const res = await this.db.query<Payment>(sql, [provider, ref]);
     return res.rows[0] ?? null;
