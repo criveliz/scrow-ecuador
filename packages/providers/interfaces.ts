@@ -14,10 +14,7 @@ export interface PaymentProvider {
     idempotencyKey: string;
   }): Promise<PaymentIntent>;
 
-  verifyWebhook(input: {
-    rawBody: string;
-    signature: string;
-  }): Promise<{
+  verifyWebhook(input: { rawBody: string; signature: string }): Promise<{
     eventId: string;
     eventType: string;
     payload: unknown;

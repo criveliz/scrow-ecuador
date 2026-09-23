@@ -10,7 +10,7 @@ export class EscrowRepository {
   constructor(private readonly db: DbClient) {}
 
   async create(
-    data: Omit<EscrowTransaction, "id" | "created_at" | "updated_at">
+    data: Omit<EscrowTransaction, "id" | "created_at" | "updated_at">,
   ): Promise<EscrowTransaction> {
     const amountNum = parseFloat(data.amount);
     if (isNaN(amountNum) || amountNum <= 0) {
@@ -54,13 +54,17 @@ export class EscrowRepository {
     return res.rows[0] ?? null;
   }
 
-  async findByExternalReference(ref: string): Promise<EscrowTransaction | null> {
+  async findByExternalReference(
+    ref: string,
+  ): Promise<EscrowTransaction | null> {
     const sql = `SELECT * FROM escrow_transactions WHERE external_reference = $1`;
     const res = await this.db.query<EscrowTransaction>(sql, [ref]);
     return res.rows[0] ?? null;
   }
 
-  async transitionStatus(params: StateTransitionParams): Promise<EscrowTransaction> {
+  async transitionStatus(
+    params: StateTransitionParams,
+  ): Promise<EscrowTransaction> {
     // 1. Validate transition using domain state machine
     const validatedTransition = executeTransition(params);
 
@@ -83,7 +87,7 @@ export class EscrowRepository {
     if (res.rows.length > 0) return res.rows[0];
 
     throw new Error(
-      `Failed to transition escrow transaction ${validatedTransition.transactionId} from ${validatedTransition.previousState} to ${validatedTransition.newState}`
+      `Failed to transition escrow transaction ${validatedTransition.transactionId} from ${validatedTransition.previousState} to ${validatedTransition.newState}`,
     );
   }
 }

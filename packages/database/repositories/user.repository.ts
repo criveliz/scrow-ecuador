@@ -4,7 +4,9 @@ import { User } from "../types/index.js";
 export class UserRepository {
   constructor(private readonly db: DbClient) {}
 
-  async create(user: Omit<User, "id" | "created_at" | "updated_at">): Promise<User> {
+  async create(
+    user: Omit<User, "id" | "created_at" | "updated_at">,
+  ): Promise<User> {
     const id = crypto.randomUUID();
     const now = new Date();
     const sql = `

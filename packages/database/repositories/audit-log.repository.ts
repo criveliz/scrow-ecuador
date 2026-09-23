@@ -35,7 +35,10 @@ export class AuditLogRepository {
     throw new Error("Failed to create audit log record");
   }
 
-  async findByEntity(entityType: string, entityId: string): Promise<AuditLog[]> {
+  async findByEntity(
+    entityType: string,
+    entityId: string,
+  ): Promise<AuditLog[]> {
     const sql = `
       SELECT * FROM audit_logs
       WHERE entity_type = $1 AND entity_id = $2

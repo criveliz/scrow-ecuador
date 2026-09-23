@@ -10,6 +10,7 @@ import { LedgerRepository } from "./repositories/ledger.repository.js";
 import { PaymentRepository } from "./repositories/payment.repository.js";
 import { ReleaseRepository } from "./repositories/release.repository.js";
 import { UserRepository } from "./repositories/user.repository.js";
+import { VerificationRepository } from "./repositories/verification.repository.js";
 import { WebhookEventRepository } from "./repositories/webhook-event.repository.js";
 import { seedDatabase } from "./seed/seed.js";
 import { LedgerAccountType, LedgerDirection } from "./types/index.js";
@@ -25,6 +26,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
   const webhookRepo = new WebhookEventRepository(db);
   const auditRepo = new AuditLogRepository(db);
   const ledgerRepo = new LedgerRepository(db);
+  const verificationRepo = new VerificationRepository(db);
 
   it("1 & 20. executes schema migration 001_initial.sql against clean PostgreSQL database", async () => {
     const executed = await runMigrations(db);
@@ -81,7 +83,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         amount: "-50.00",
         currency: "USD",
         status: EscrowStatus.CREATED,
-      })
+      }),
     ).rejects.toThrow();
 
     await expect(
@@ -91,7 +93,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         amount: "0.00",
         currency: "USD",
         status: "FAILED",
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -170,7 +172,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         currency: "USD",
         status: "COMPLETED",
         provider: "FIDUCIARY_MOCK",
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -243,7 +245,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
       dispute.id,
       seller.id,
       "Refund granted to buyer",
-      "RESOLVED_REFUND"
+      "RESOLVED_REFUND",
     );
 
     expect(resolved.status).toBe("RESOLVED_REFUND");
@@ -276,7 +278,8 @@ describe("Database package unit and integration tests against real PostgreSQL 16
       uploaded_by: buyer.id,
       type: "PHOTO_PROOF",
       storage_reference: "s3://evidence-bucket/photo1.jpg",
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      sha256:
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       metadata: { file_size_bytes: 204800 },
     });
 
@@ -304,7 +307,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         payload: { transaction_id: "tx_123", status: "approval" },
         signature_verified: true,
         status: "PROCESSED",
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -356,7 +359,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
           amount: "100.00",
           currency: "USD",
         },
-      ]
+      ],
     );
 
     expect(posting.transaction.id).toBeDefined();
@@ -382,15 +385,61 @@ describe("Database package unit and integration tests against real PostgreSQL 16
             amount: "50.00",
             currency: "USD",
           },
-        ]
-      )
-    ).rejects.toThrow("Unbalanced double-entry transaction! Debits (100.00) != Credits (50.00)");
+        ],
+      ),
+    ).rejects.toThrow(
+      "Unbalanced double-entry transaction! Debits (100.00) != Credits (50.00)",
+    );
+  });
+
+  it("creates and updates verifications linked to escrow and user", async () => {
+    const buyer = await userRepo.create({
+      email: "buyer_vtest@example.com",
+      password_hash: "hash",
+      role: ActorRole.BUYER,
+      status: "ACTIVE",
+    });
+
+    const escrow = await escrowRepo.create({
+      external_reference: "ESC-VTEST-001",
+      buyer_id: buyer.id,
+      seller_id: buyer.id,
+      amount: "100.00",
+      currency: "USD",
+      status: EscrowStatus.CREATED,
+    });
+
+    const verification = await verificationRepo.create({
+      escrow_id: escrow.id,
+      party_id: buyer.id,
+      provider: "CIPHERBYTE",
+      verification_type: "PERSON",
+      status: "PENDING",
+      cost_tokens: 1.5,
+    });
+
+    expect(verification.id).toBeDefined();
+    expect(verification.escrow_id).toBe(escrow.id);
+    expect(verification.party_id).toBe(buyer.id);
+
+    const updated = await verificationRepo.updateStatus(
+      verification.id,
+      "VERIFIED",
+      "ref_123",
+      new Date(),
+      { name: "JUAN PEREZ" },
+    );
+
+    expect(updated.status).toBe("VERIFIED");
+    expect(updated.provider_reference).toBe("ref_123");
   });
 
   it("seeds database with synthetic test data", async () => {
     const seed = await seedDatabase(db);
     expect(seed.buyer.email).toContain("@example.invalid");
     expect(seed.seller.email).toContain("@example.invalid");
-    expect(parseFloat(String(seed.sampleEscrow.amount)).toFixed(2)).toBe("150.00");
+    expect(parseFloat(String(seed.sampleEscrow.amount)).toFixed(2)).toBe(
+      "150.00",
+    );
   });
 });
