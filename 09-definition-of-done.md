@@ -1,6 +1,7 @@
 # 09 — Definition of Done
 
 A financial feature is complete only when:
+
 - domain rules are implemented
 - authorization is enforced
 - idempotency is enforced
@@ -15,6 +16,7 @@ A financial feature is complete only when:
 - documentation is updated
 
 Before production:
+
 - legal structure confirmed
 - KYC/AML obligations reviewed with qualified Ecuador counsel/compliance professionals
 - privacy compliance reviewed

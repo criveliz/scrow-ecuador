@@ -4,7 +4,9 @@ import { Dispute } from "../types/index.js";
 export class DisputeRepository {
   constructor(private readonly db: DbClient) {}
 
-  async create(data: Omit<Dispute, "id" | "created_at" | "updated_at">): Promise<Dispute> {
+  async create(
+    data: Omit<Dispute, "id" | "created_at" | "updated_at">,
+  ): Promise<Dispute> {
     const id = crypto.randomUUID();
     const now = new Date();
 
@@ -46,7 +48,7 @@ export class DisputeRepository {
     id: string,
     resolvedBy: string,
     resolution: string,
-    status = "RESOLVED"
+    status = "RESOLVED",
   ): Promise<Dispute> {
     const now = new Date();
     const sql = `
@@ -55,7 +57,13 @@ export class DisputeRepository {
       WHERE id = $5
       RETURNING *
     `;
-    const res = await this.db.query<Dispute>(sql, [status, resolvedBy, resolution, now, id]);
+    const res = await this.db.query<Dispute>(sql, [
+      status,
+      resolvedBy,
+      resolution,
+      now,
+      id,
+    ]);
     if (res.rows.length > 0) return res.rows[0];
 
     throw new Error(`Dispute ${id} not found`);

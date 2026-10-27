@@ -33,7 +33,8 @@ export async function seedDatabase(db: DbClient) {
       name: "CUSTOMER_FUNDS",
       code: "1010",
       type: LedgerAccountType.ASSET,
-      description: "Clearing account for customer funds held in fiduciary trust",
+      description:
+        "Clearing account for customer funds held in fiduciary trust",
     },
     {
       name: "PENDING_RELEASE",

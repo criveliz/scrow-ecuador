@@ -3,6 +3,7 @@
 Ecuador-first escrow orchestration platform starter for development with Jules/GitHub.
 
 ## Goal
+
 Create a transaction workflow where a buyer and seller can use an escrow-like process while an authorized financial/fiduciary provider handles custody and movement of funds according to the final legal and commercial arrangement.
 
 ## MVP flow
@@ -22,9 +23,11 @@ Create a transaction workflow where a buyer and seller can use an escrow-like pr
 13. Receipt and audit trail
 
 ## Important
+
 This repository intentionally uses mock payment/fiduciary providers. Replace them only after the real provider contracts, APIs, webhooks, authorization model, reconciliation process, and legal structure are confirmed.
 
 ## Suggested stack
+
 - Next.js
 - NestJS
 - PostgreSQL

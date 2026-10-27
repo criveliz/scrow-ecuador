@@ -24,7 +24,7 @@ export class LedgerRepository {
   constructor(private readonly db: DbClient) {}
 
   async createAccount(
-    data: Omit<LedgerAccount, "id" | "created_at" | "updated_at">
+    data: Omit<LedgerAccount, "id" | "created_at" | "updated_at">,
   ): Promise<LedgerAccount> {
     const id = crypto.randomUUID();
     const now = new Date();
@@ -34,7 +34,15 @@ export class LedgerRepository {
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       RETURNING *
     `;
-    const params = [id, data.name, data.code, data.type, data.description ?? null, now, now];
+    const params = [
+      id,
+      data.name,
+      data.code,
+      data.type,
+      data.description ?? null,
+      now,
+      now,
+    ];
 
     const res = await this.db.query<LedgerAccount>(sql, params);
     if (res.rows.length > 0) return res.rows[0];
@@ -55,10 +63,14 @@ export class LedgerRepository {
    */
   async postTransaction(
     txData: Omit<LedgerTransaction, "id" | "created_at">,
-    entriesData: Array<Omit<LedgerEntry, "id" | "ledger_transaction_id" | "created_at">>
+    entriesData: Array<
+      Omit<LedgerEntry, "id" | "ledger_transaction_id" | "created_at">
+    >,
   ): Promise<{ transaction: LedgerTransaction; entries: LedgerEntry[] }> {
     if (entriesData.length < 2) {
-      throw new Error("Double-entry transaction must contain at least 2 entries");
+      throw new Error(
+        "Double-entry transaction must contain at least 2 entries",
+      );
     }
 
     // Double-entry validation: Total Debits must equal Total Credits using BigInt cents
@@ -84,7 +96,7 @@ export class LedgerRepository {
       const debitStr = (Number(totalDebitCents) / 100).toFixed(2);
       const creditStr = (Number(totalCreditCents) / 100).toFixed(2);
       throw new Error(
-        `Unbalanced double-entry transaction! Debits (${debitStr}) != Credits (${creditStr})`
+        `Unbalanced double-entry transaction! Debits (${debitStr}) != Credits (${creditStr})`,
       );
     }
 
@@ -134,7 +146,10 @@ export class LedgerRepository {
           now,
         ];
 
-        const entryRes = await txClient.query<LedgerEntry>(entrySql, entryParams);
+        const entryRes = await txClient.query<LedgerEntry>(
+          entrySql,
+          entryParams,
+        );
         if (entryRes.rows.length === 0) {
           throw new Error("Failed to insert ledger entry record");
         }
@@ -145,7 +160,9 @@ export class LedgerRepository {
     });
   }
 
-  async findEntriesByTransactionId(transactionId: string): Promise<LedgerEntry[]> {
+  async findEntriesByTransactionId(
+    transactionId: string,
+  ): Promise<LedgerEntry[]> {
     const sql = `SELECT * FROM ledger_entries WHERE ledger_transaction_id = $1`;
     const res = await this.db.query<LedgerEntry>(sql, [transactionId]);
     return res.rows;
