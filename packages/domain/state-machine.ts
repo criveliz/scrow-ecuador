@@ -46,8 +46,15 @@ export interface EscrowStateTransition {
 }
 
 export class InvalidStateTransitionError extends Error {
-  constructor(public readonly previousState: EscrowStatus, public readonly newState: EscrowStatus, message?: string) {
-    super(message ?? `Invalid escrow state transition from ${previousState} to ${newState}`);
+  constructor(
+    public readonly previousState: EscrowStatus,
+    public readonly newState: EscrowStatus,
+    message?: string,
+  ) {
+    super(
+      message ??
+        `Invalid escrow state transition from ${previousState} to ${newState}`,
+    );
     this.name = "InvalidStateTransitionError";
   }
 }
@@ -57,19 +64,24 @@ export class UnauthorizedActorError extends Error {
     public readonly actorRole: ActorRole,
     public readonly previousState: EscrowStatus,
     public readonly newState: EscrowStatus,
-    message?: string
+    message?: string,
   ) {
     super(
       message ??
-        `Actor role '${actorRole}' is not authorized to transition escrow state from ${previousState} to ${newState}`
+        `Actor role '${actorRole}' is not authorized to transition escrow state from ${previousState} to ${newState}`,
     );
     this.name = "UnauthorizedActorError";
   }
 }
 
 export class TerminalStateError extends Error {
-  constructor(public readonly currentState: EscrowStatus, message?: string) {
-    super(message ?? `Cannot transition out of terminal state: ${currentState}`);
+  constructor(
+    public readonly currentState: EscrowStatus,
+    message?: string,
+  ) {
+    super(
+      message ?? `Cannot transition out of terminal state: ${currentState}`,
+    );
     this.name = "TerminalStateError";
   }
 }
@@ -93,44 +105,108 @@ export const ALLOWED_TRANSITIONS: Record<
   Partial<Record<EscrowStatus, ActorRole[]>>
 > = {
   [EscrowStatus.CREATED]: {
-    [EscrowStatus.AWAITING_PAYMENT]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.AWAITING_PAYMENT]: [
+      ActorRole.BUYER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
+    [EscrowStatus.CANCELLED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.AWAITING_PAYMENT]: {
     [EscrowStatus.PAYMENT_RECEIVED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
     [EscrowStatus.EXPIRED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.CANCELLED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.CANCELLED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.PAYMENT_RECEIVED]: {
     [EscrowStatus.FUNDS_CONFIRMED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DISPUTED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.FUNDS_CONFIRMED]: {
     [EscrowStatus.SELLER_ACCEPTED]: [ActorRole.SELLER],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DISPUTED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.SELLER_ACCEPTED]: {
-    [EscrowStatus.DELIVERY_PENDING]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DELIVERY_PENDING]: [
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
+    [EscrowStatus.DISPUTED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.DELIVERY_PENDING]: {
-    [EscrowStatus.DELIVERED]: [ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DELIVERED]: [
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
+    [EscrowStatus.DISPUTED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.DELIVERED]: {
     [EscrowStatus.BUYER_CONFIRMED]: [ActorRole.BUYER],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DISPUTED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.BUYER_CONFIRMED]: {
-    [EscrowStatus.RELEASE_PENDING]: [ActorRole.BUYER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.RELEASE_PENDING]: [
+      ActorRole.BUYER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.RELEASE_PENDING]: {
     [EscrowStatus.RELEASED]: [ActorRole.SYSTEM, ActorRole.ADMIN],
-    [EscrowStatus.DISPUTED]: [ActorRole.BUYER, ActorRole.SELLER, ActorRole.SYSTEM, ActorRole.ADMIN],
+    [EscrowStatus.DISPUTED]: [
+      ActorRole.BUYER,
+      ActorRole.SELLER,
+      ActorRole.SYSTEM,
+      ActorRole.ADMIN,
+    ],
   },
   [EscrowStatus.DISPUTED]: {
-    [EscrowStatus.RELEASE_PENDING]: [ActorRole.ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
-    [EscrowStatus.REFUNDED]: [ActorRole.ADMIN, ActorRole.SUPPORT, ActorRole.SYSTEM],
+    [EscrowStatus.RELEASE_PENDING]: [
+      ActorRole.ADMIN,
+      ActorRole.SUPPORT,
+      ActorRole.SYSTEM,
+    ],
+    [EscrowStatus.REFUNDED]: [
+      ActorRole.ADMIN,
+      ActorRole.SUPPORT,
+      ActorRole.SYSTEM,
+    ],
   },
   [EscrowStatus.RELEASED]: {},
   [EscrowStatus.REFUNDED]: {},
@@ -150,7 +226,7 @@ export function canTransition(from: EscrowStatus, to: EscrowStatus): boolean {
 export function isAllowedActorForTransition(
   from: EscrowStatus,
   to: EscrowStatus,
-  role: ActorRole
+  role: ActorRole,
 ): boolean {
   const allowed = ALLOWED_TRANSITIONS[from];
   if (!allowed) return false;
@@ -160,7 +236,15 @@ export function isAllowedActorForTransition(
 }
 
 export function validateTransition(params: StateTransitionParams): void {
-  const { transactionId, previousState, newState, actorId, actorRole, timestamp, reason } = params;
+  const {
+    transactionId,
+    previousState,
+    newState,
+    actorId,
+    actorRole,
+    timestamp,
+    reason,
+  } = params;
 
   if (!transactionId || transactionId.trim() === "") {
     throw new InvalidTransitionPayloadError("Transaction ID is required");
@@ -196,7 +280,9 @@ export function validateTransition(params: StateTransitionParams): void {
   }
 }
 
-export function executeTransition(params: StateTransitionParams): EscrowStateTransition {
+export function executeTransition(
+  params: StateTransitionParams,
+): EscrowStateTransition {
   validateTransition(params);
 
   const isoTimestamp = new Date(params.timestamp).toISOString();

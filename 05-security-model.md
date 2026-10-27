@@ -1,13 +1,16 @@
 # 05 — Security Model
 
 ## Authentication
+
 - Email/phone authentication
 - Secure password hashing if passwords are used
 - Refresh token rotation
 - MFA for admins
 
 ## Authorization
+
 RBAC:
+
 - BUYER
 - SELLER
 - SUPPORT
@@ -15,6 +18,7 @@ RBAC:
 - SUPER_ADMIN
 
 ## Data protection
+
 - TLS
 - Secrets outside source control
 - Encryption for sensitive fields where appropriate
@@ -23,7 +27,9 @@ RBAC:
 - Access logging
 
 ## Webhooks
+
 For every provider webhook:
+
 1. Receive request.
 2. Verify signature.
 3. Validate timestamp/replay window if supported.
@@ -34,6 +40,7 @@ For every provider webhook:
 8. Audit result.
 
 ## Financial integrity
+
 - Decimal money representation
 - Immutable ledger entries
 - Database transactions
@@ -42,7 +49,9 @@ For every provider webhook:
 - Reconciliation jobs
 
 ## Incident response
+
 Log:
+
 - request ID
 - actor
 - operation ID

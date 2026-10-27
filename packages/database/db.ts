@@ -20,11 +20,14 @@ export class PgDbClient implements DbClient {
         connectionString:
           process.env.DATABASE_URL ||
           "postgresql://escrow_user:escrow_password@localhost:5432/escrow_db",
-      }
+      },
     );
   }
 
-  async query<T = any>(sql: string, params: any[] = []): Promise<DbQueryResult<T>> {
+  async query<T = any>(
+    sql: string,
+    params: any[] = [],
+  ): Promise<DbQueryResult<T>> {
     const res = await this.pool.query(sql, params);
     return {
       rows: res.rows as T[],
@@ -37,11 +40,19 @@ export class PgDbClient implements DbClient {
     try {
       await client.query("BEGIN");
       const txClient: DbClient = {
-        query: async <R = any>(sql: string, params: any[] = []): Promise<DbQueryResult<R>> => {
+        query: async <R = any>(
+          sql: string,
+          params: any[] = [],
+        ): Promise<DbQueryResult<R>> => {
           const res = await client.query(sql, params);
-          return { rows: res.rows as R[], rowCount: res.rowCount ?? res.rows.length };
+          return {
+            rows: res.rows as R[],
+            rowCount: res.rowCount ?? res.rows.length,
+          };
         },
-        transaction: async <R>(cb: (innerTx: DbClient) => Promise<R>): Promise<R> => {
+        transaction: async <R>(
+          cb: (innerTx: DbClient) => Promise<R>,
+        ): Promise<R> => {
           return cb(txClient);
         },
       };
@@ -77,7 +88,10 @@ export class PgMemDbClient implements DbClient {
     this.client.connect();
   }
 
-  async query<T = any>(sql: string, params: any[] = []): Promise<DbQueryResult<T>> {
+  async query<T = any>(
+    sql: string,
+    params: any[] = [],
+  ): Promise<DbQueryResult<T>> {
     const res = await this.client.query(sql, params);
     return {
       rows: (res.rows ?? []) as T[],
@@ -111,7 +125,10 @@ export class InMemoryDbClient implements DbClient {
     return this.tables.get(name)!;
   }
 
-  async query<T = any>(sql: string, params: any[] = []): Promise<DbQueryResult<T>> {
+  async query<T = any>(
+    sql: string,
+    params: any[] = [],
+  ): Promise<DbQueryResult<T>> {
     const norm = sql.replace(/\s+/g, " ").trim();
     const upper = norm.toUpperCase();
 
@@ -179,7 +196,9 @@ export class InMemoryDbClient implements DbClient {
         }
 
         // Extract condition pairs col_name = $N
-        const condMatches = Array.from(norm.matchAll(/([a-z0-9_]+)\s*=\s*\$(\d+)/gi));
+        const condMatches = Array.from(
+          norm.matchAll(/([a-z0-9_]+)\s*=\s*\$(\d+)/gi),
+        );
         if (condMatches.length > 0) {
           const filtered = table.filter((row) => {
             return condMatches.every((m) => {
