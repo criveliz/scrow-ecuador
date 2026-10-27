@@ -2,5 +2,13 @@
   "name": "@escrow-ecuador/api",
   "version": "0.1.0",
   "type": "module",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "express": "^4.19.2",
+    "@escrow-ecuador/kushki-adapter": "*",
+    "@escrow-ecuador/database": "*"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21"
+  }
 }
