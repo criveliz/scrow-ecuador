@@ -1,0 +1,17 @@
+{
+  "name": "@escrow-ecuador/auth",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "@escrow-ecuador/database": "*",
+    "@escrow-ecuador/domain": "*",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.5",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

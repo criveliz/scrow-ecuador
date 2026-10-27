@@ -81,7 +81,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         amount: "-50.00",
         currency: "USD",
         status: EscrowStatus.CREATED,
-      })
+      }),
     ).rejects.toThrow();
 
     await expect(
@@ -91,7 +91,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         amount: "0.00",
         currency: "USD",
         status: "FAILED",
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -170,7 +170,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         currency: "USD",
         status: "COMPLETED",
         provider: "FIDUCIARY_MOCK",
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -243,7 +243,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
       dispute.id,
       seller.id,
       "Refund granted to buyer",
-      "RESOLVED_REFUND"
+      "RESOLVED_REFUND",
     );
 
     expect(resolved.status).toBe("RESOLVED_REFUND");
@@ -276,7 +276,8 @@ describe("Database package unit and integration tests against real PostgreSQL 16
       uploaded_by: buyer.id,
       type: "PHOTO_PROOF",
       storage_reference: "s3://evidence-bucket/photo1.jpg",
-      sha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      sha256:
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       metadata: { file_size_bytes: 204800 },
     });
 
@@ -304,7 +305,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
         payload: { transaction_id: "tx_123", status: "approval" },
         signature_verified: true,
         status: "PROCESSED",
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -356,7 +357,7 @@ describe("Database package unit and integration tests against real PostgreSQL 16
           amount: "100.00",
           currency: "USD",
         },
-      ]
+      ],
     );
 
     expect(posting.transaction.id).toBeDefined();
@@ -382,15 +383,19 @@ describe("Database package unit and integration tests against real PostgreSQL 16
             amount: "50.00",
             currency: "USD",
           },
-        ]
-      )
-    ).rejects.toThrow("Unbalanced double-entry transaction! Debits (100.00) != Credits (50.00)");
+        ],
+      ),
+    ).rejects.toThrow(
+      "Unbalanced double-entry transaction! Debits (100.00) != Credits (50.00)",
+    );
   });
 
   it("seeds database with synthetic test data", async () => {
     const seed = await seedDatabase(db);
     expect(seed.buyer.email).toContain("@example.invalid");
     expect(seed.seller.email).toContain("@example.invalid");
-    expect(parseFloat(String(seed.sampleEscrow.amount)).toFixed(2)).toBe("150.00");
+    expect(parseFloat(String(seed.sampleEscrow.amount)).toFixed(2)).toBe(
+      "150.00",
+    );
   });
 });

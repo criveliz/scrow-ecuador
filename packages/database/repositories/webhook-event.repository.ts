@@ -5,12 +5,17 @@ export class WebhookEventRepository {
   constructor(private readonly db: DbClient) {}
 
   async recordEvent(
-    data: Omit<WebhookEvent, "id" | "received_at">
+    data: Omit<WebhookEvent, "id" | "received_at">,
   ): Promise<WebhookEvent> {
     // Check if event was already recorded for idempotency
-    const existing = await this.findByProviderAndEventId(data.provider, data.event_id);
+    const existing = await this.findByProviderAndEventId(
+      data.provider,
+      data.event_id,
+    );
     if (existing) {
-      throw new Error(`Duplicate webhook event: ${data.provider} / ${data.event_id}`);
+      throw new Error(
+        `Duplicate webhook event: ${data.provider} / ${data.event_id}`,
+      );
     }
 
     const id = crypto.randomUUID();
@@ -45,7 +50,7 @@ export class WebhookEventRepository {
 
   async findByProviderAndEventId(
     provider: string,
-    eventId: string
+    eventId: string,
   ): Promise<WebhookEvent | null> {
     const sql = `SELECT * FROM webhook_events WHERE provider = $1 AND event_id = $2`;
     const res = await this.db.query<WebhookEvent>(sql, [provider, eventId]);

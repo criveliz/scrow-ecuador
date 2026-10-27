@@ -16,6 +16,7 @@ CREATED
 ```
 
 Alternative paths:
+
 - AWAITING_PAYMENT -> EXPIRED
 - PAYMENT_RECEIVED -> DISPUTED
 - FUNDS_CONFIRMED -> DISPUTED
@@ -26,6 +27,7 @@ Alternative paths:
 - CREATED -> CANCELLED
 
 ## Rules
+
 - No direct arbitrary status updates.
 - Every transition has an actor, event, timestamp, previous state, new state, and metadata.
 - A dispute prevents automatic release until resolved.

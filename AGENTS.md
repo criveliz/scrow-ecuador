@@ -1,9 +1,11 @@
 # Escrow Ecuador — AGENTS.md
 
 ## Mission
+
 Build a secure Ecuador-focused escrow transaction platform. The platform orchestrates transactions, evidence, state transitions, notifications, auditability, and integrations. It must not assume that the platform itself is legally authorized to custody customer funds.
 
 ## Architecture
+
 - Monorepo-ready structure
 - Frontend: Next.js + TypeScript (planned)
 - Backend: NestJS + TypeScript (planned)
@@ -13,6 +15,7 @@ Build a secure Ecuador-focused escrow transaction platform. The platform orchest
 - Provider integrations behind typed adapters
 
 ## Critical financial rules
+
 1. Never change balances directly from frontend input.
 2. Never release funds solely because of a frontend request.
 3. Never trust a payment webhook without signature verification.
@@ -25,6 +28,7 @@ Build a secure Ecuador-focused escrow transaction platform. The platform orchest
 10. Use mock providers in development and tests.
 
 ## Escrow states
+
 CREATED
 AWAITING_PAYMENT
 PAYMENT_RECEIVED
@@ -41,6 +45,7 @@ EXPIRED
 CANCELLED
 
 ## Engineering
+
 - TypeScript strict mode.
 - Prefer a modular monolith before microservices.
 - Validate all external input.
@@ -52,6 +57,7 @@ CANCELLED
 - Do not merge code with failing tests.
 
 ## Security
+
 - HTTPS in production.
 - Secret manager in production.
 - Rate limiting.
@@ -62,4 +68,5 @@ CANCELLED
 - Encrypt sensitive data at rest where appropriate.
 
 ## Product principle
+
 The source of truth is the platform database + ledger + verified provider events, not WhatsApp, email, or browser state.
