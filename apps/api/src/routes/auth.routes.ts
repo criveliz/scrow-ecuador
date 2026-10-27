@@ -1,9 +1,14 @@
 import { Router, Request, Response, NextFunction } from "express";
 import { AuthService, AuthenticationError } from "@escrow-ecuador/auth";
-import { authenticate } from "../middleware/auth.middleware.js";
+import { createAuthenticate } from "../middleware/auth.middleware.js";
+import { UserRepository } from "@escrow-ecuador/database";
 
-export function createAuthRoutes(authService: AuthService): Router {
+export function createAuthRoutes(
+  authService: AuthService,
+  userRepository: UserRepository,
+): Router {
   const router = Router();
+  const authenticate = createAuthenticate(userRepository);
 
   router.post(
     "/register",
@@ -73,18 +78,17 @@ export function createAuthRoutes(authService: AuthService): Router {
 
   router.post(
     "/refresh",
-    authenticate,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
-        if (!req.user) {
-          res.status(401).json({ error: "Unauthorized" });
+        const { refreshToken } = req.body;
+        if (!refreshToken) {
+          res
+            .status(400)
+            .json({ error: "Missing required field: refreshToken" });
           return;
         }
 
-        const result = await authService.refresh(
-          req.user.userId,
-          req.user.role,
-        );
+        const result = await authService.refresh(refreshToken);
 
         res.status(200).json(result);
       } catch (error) {

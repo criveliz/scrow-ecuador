@@ -6,6 +6,8 @@ import {
   PgMemDbClient,
   runMigrations,
 } from "@escrow-ecuador/database";
+import fs from "fs";
+import path from "path";
 import { ActorRole } from "@escrow-ecuador/domain";
 import { Express } from "express";
 
@@ -16,6 +18,14 @@ describe("Auth API E2E", () => {
   beforeEach(async () => {
     db = new PgMemDbClient();
     await runMigrations(db);
+    const schemaSql = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../packages/database/schema/002_auth_hardening.sql",
+      ),
+      "utf8",
+    );
+    await db.query(schemaSql);
     app = createApp(db);
   });
 
@@ -101,40 +111,43 @@ describe("Auth API E2E", () => {
       refreshToken = res.body.refreshToken;
     });
 
-    it("should refresh tokens using a valid access token", async () => {
+    it("should refresh tokens using a valid refresh token in the body", async () => {
+      // Need a small timeout to avoid token being issued at the exact same millisecond
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       const response = await request(app)
         .post("/api/v1/auth/refresh")
-        .set("Authorization", `Bearer ${accessToken}`);
+        .send({ refreshToken });
 
       expect(response.status).toBe(200);
       expect(response.body.accessToken).toBeDefined();
       expect(response.body.refreshToken).toBeDefined();
     });
 
-    it("should fail to refresh without authorization header", async () => {
-      const response = await request(app).post("/api/v1/auth/refresh");
+    it("should fail to refresh without refresh token in body", async () => {
+      const response = await request(app).post("/api/v1/auth/refresh").send({});
 
-      expect(response.status).toBe(401);
-      expect(response.body.error).toBe(
-        "Missing or invalid authorization header",
-      );
+      expect(response.status).toBe(400);
+      expect(response.body.error).toBe("Missing required field: refreshToken");
     });
 
     it("should fail to refresh with invalid token", async () => {
       const response = await request(app)
         .post("/api/v1/auth/refresh")
-        .set("Authorization", "Bearer invalid.token.here");
+        .send({ refreshToken: "invalid.token.here" });
 
       expect(response.status).toBe(401);
-      expect(response.body.error).toBe("Invalid token");
+      expect(response.body.error).toBe("Invalid refresh token");
     });
   });
 
   describe("RBAC Middleware", () => {
     it("should export requireRoles middleware correctly (unit test via route)", async () => {
       // Mount a test route to verify RBAC
-      const { requireRoles, authenticate } =
+      const { requireRoles, createAuthenticate } =
         await import("./src/middleware/auth.middleware.js");
+      const { UserRepository } = await import("@escrow-ecuador/database");
+      const authenticate = createAuthenticate(new UserRepository(db));
       app.get(
         "/api/v1/test-admin-only",
         authenticate,

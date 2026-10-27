@@ -5,13 +5,20 @@ export class UserRepository {
   constructor(private readonly db: DbClient) {}
 
   async create(
-    user: Omit<User, "id" | "created_at" | "updated_at">,
+    user: Omit<
+      User,
+      | "id"
+      | "created_at"
+      | "updated_at"
+      | "token_version"
+      | "failed_login_attempts"
+    >,
   ): Promise<User> {
     const id = crypto.randomUUID();
     const now = new Date();
     const sql = `
-      INSERT INTO users (id, email, phone, password_hash, role, status, created_at, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      INSERT INTO users (id, email, phone, password_hash, role, status, token_version, failed_login_attempts, created_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
     `;
     const params = [
@@ -21,6 +28,8 @@ export class UserRepository {
       user.password_hash,
       user.role,
       user.status,
+      1, // token_version
+      0, // failed_login_attempts
       now,
       now,
     ];

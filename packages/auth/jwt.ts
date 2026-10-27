@@ -8,14 +8,11 @@ const JWT_REFRESH_EXPIRES_IN = "7d";
 export interface JwtPayload {
   userId: string;
   role: string;
+  tokenVersion: number;
 }
 
 export function generateToken(payload: JwtPayload): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
-}
-
-export function generateRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_REFRESH_EXPIRES_IN });
 }
 
 export function verifyToken(token: string): JwtPayload {

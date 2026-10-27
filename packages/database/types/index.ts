@@ -7,8 +7,21 @@ export interface User {
   password_hash: string;
   role: ActorRole | string;
   status: string;
+  token_version: number;
+  failed_login_attempts: number;
+  locked_until?: Date | string | null;
   created_at: Date | string;
   updated_at: Date | string;
+}
+
+export interface AuthRefreshToken {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  family_id: string;
+  is_revoked: boolean;
+  expires_at: Date | string;
+  created_at: Date | string;
 }
 
 export interface Identity {
