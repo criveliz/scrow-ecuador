@@ -132,7 +132,9 @@ describe("escrow state machine", () => {
 
   describe("invalid state transitions", () => {
     it("rejects illegal state jumps", () => {
-      expect(canTransition(EscrowStatus.CREATED, EscrowStatus.RELEASED)).toBe(false);
+      expect(canTransition(EscrowStatus.CREATED, EscrowStatus.RELEASED)).toBe(
+        false,
+      );
       expect(() =>
         validateTransition({
           transactionId: dummyTxId,
@@ -142,7 +144,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.ADMIN,
           timestamp: now,
           reason: "Arbitrary status change attempt",
-        })
+        }),
       ).toThrow(InvalidStateTransitionError);
     });
 
@@ -156,7 +158,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: now,
           reason: "Missing tx id",
-        })
+        }),
       ).toThrow(InvalidTransitionPayloadError);
     });
 
@@ -170,7 +172,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: now,
           reason: "Missing actor id",
-        })
+        }),
       ).toThrow(InvalidTransitionPayloadError);
     });
 
@@ -184,7 +186,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: now,
           reason: "",
-        })
+        }),
       ).toThrow(InvalidTransitionPayloadError);
     });
 
@@ -198,7 +200,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: "not-a-date",
           reason: "Bad timestamp",
-        })
+        }),
       ).toThrow(InvalidTransitionPayloadError);
     });
   });
@@ -209,8 +211,8 @@ describe("escrow state machine", () => {
         isAllowedActorForTransition(
           EscrowStatus.FUNDS_CONFIRMED,
           EscrowStatus.SELLER_ACCEPTED,
-          ActorRole.BUYER
-        )
+          ActorRole.BUYER,
+        ),
       ).toBe(false);
 
       expect(() =>
@@ -222,7 +224,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: now,
           reason: "Buyer trying to accept seller order",
-        })
+        }),
       ).toThrow(UnauthorizedActorError);
     });
 
@@ -231,8 +233,8 @@ describe("escrow state machine", () => {
         isAllowedActorForTransition(
           EscrowStatus.AWAITING_PAYMENT,
           EscrowStatus.PAYMENT_RECEIVED,
-          ActorRole.BUYER
-        )
+          ActorRole.BUYER,
+        ),
       ).toBe(false);
 
       expect(() =>
@@ -244,7 +246,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: now,
           reason: "Buyer claims paid without gateway confirmation",
-        })
+        }),
       ).toThrow(UnauthorizedActorError);
     });
 
@@ -253,8 +255,8 @@ describe("escrow state machine", () => {
         isAllowedActorForTransition(
           EscrowStatus.DELIVERED,
           EscrowStatus.BUYER_CONFIRMED,
-          ActorRole.SELLER
-        )
+          ActorRole.SELLER,
+        ),
       ).toBe(false);
 
       expect(() =>
@@ -266,7 +268,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.SELLER,
           timestamp: now,
           reason: "Seller trying to confirm for buyer",
-        })
+        }),
       ).toThrow(UnauthorizedActorError);
     });
 
@@ -275,16 +277,16 @@ describe("escrow state machine", () => {
         isAllowedActorForTransition(
           EscrowStatus.DISPUTED,
           EscrowStatus.REFUNDED,
-          ActorRole.ADMIN
-        )
+          ActorRole.ADMIN,
+        ),
       ).toBe(true);
 
       expect(
         isAllowedActorForTransition(
           EscrowStatus.DISPUTED,
           EscrowStatus.RELEASE_PENDING,
-          ActorRole.SUPPORT
-        )
+          ActorRole.SUPPORT,
+        ),
       ).toBe(true);
     });
 
@@ -293,16 +295,16 @@ describe("escrow state machine", () => {
         isAllowedActorForTransition(
           EscrowStatus.DISPUTED,
           EscrowStatus.REFUNDED,
-          ActorRole.BUYER
-        )
+          ActorRole.BUYER,
+        ),
       ).toBe(false);
 
       expect(
         isAllowedActorForTransition(
           EscrowStatus.DISPUTED,
           EscrowStatus.RELEASE_PENDING,
-          ActorRole.SELLER
-        )
+          ActorRole.SELLER,
+        ),
       ).toBe(false);
     });
   });
@@ -335,7 +337,9 @@ describe("escrow state machine", () => {
     });
 
     it("prevents DISPUTED from transitioning directly to RELEASED without RELEASE_PENDING", () => {
-      expect(canTransition(EscrowStatus.DISPUTED, EscrowStatus.RELEASED)).toBe(false);
+      expect(canTransition(EscrowStatus.DISPUTED, EscrowStatus.RELEASED)).toBe(
+        false,
+      );
 
       expect(() =>
         executeTransition({
@@ -346,7 +350,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.ADMIN,
           timestamp: now,
           reason: "Direct release attempt from dispute",
-        })
+        }),
       ).toThrow(InvalidStateTransitionError);
     });
 
@@ -408,7 +412,7 @@ describe("escrow state machine", () => {
             actorRole: ActorRole.ADMIN,
             timestamp: now,
             reason: "Post-release transition attempt",
-          })
+          }),
         ).toThrow(TerminalStateError);
       }
     });
@@ -431,13 +435,16 @@ describe("escrow state machine", () => {
             actorRole: ActorRole.ADMIN,
             timestamp: now,
             reason: "Post-refund transition attempt",
-          })
+          }),
         ).toThrow(TerminalStateError);
       }
     });
 
     it("prevents transitions out of EXPIRED or CANCELLED", () => {
-      for (const terminalState of [EscrowStatus.EXPIRED, EscrowStatus.CANCELLED]) {
+      for (const terminalState of [
+        EscrowStatus.EXPIRED,
+        EscrowStatus.CANCELLED,
+      ]) {
         expect(() =>
           executeTransition({
             transactionId: dummyTxId,
@@ -447,7 +454,7 @@ describe("escrow state machine", () => {
             actorRole: ActorRole.ADMIN,
             timestamp: now,
             reason: "Reopening terminal escrow",
-          })
+          }),
         ).toThrow(TerminalStateError);
       }
     });
@@ -479,8 +486,12 @@ describe("escrow state machine", () => {
     });
 
     it("prevents cancellation once payment is received or funds confirmed", () => {
-      expect(canTransition(EscrowStatus.PAYMENT_RECEIVED, EscrowStatus.CANCELLED)).toBe(false);
-      expect(canTransition(EscrowStatus.FUNDS_CONFIRMED, EscrowStatus.CANCELLED)).toBe(false);
+      expect(
+        canTransition(EscrowStatus.PAYMENT_RECEIVED, EscrowStatus.CANCELLED),
+      ).toBe(false);
+      expect(
+        canTransition(EscrowStatus.FUNDS_CONFIRMED, EscrowStatus.CANCELLED),
+      ).toBe(false);
 
       expect(() =>
         executeTransition({
@@ -491,7 +502,7 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.BUYER,
           timestamp: now,
           reason: "Direct cancellation after funds confirmed",
-        })
+        }),
       ).toThrow(InvalidStateTransitionError);
     });
 
@@ -509,8 +520,12 @@ describe("escrow state machine", () => {
     });
 
     it("prevents expiration from CREATED or active financial states", () => {
-      expect(canTransition(EscrowStatus.CREATED, EscrowStatus.EXPIRED)).toBe(false);
-      expect(canTransition(EscrowStatus.FUNDS_CONFIRMED, EscrowStatus.EXPIRED)).toBe(false);
+      expect(canTransition(EscrowStatus.CREATED, EscrowStatus.EXPIRED)).toBe(
+        false,
+      );
+      expect(
+        canTransition(EscrowStatus.FUNDS_CONFIRMED, EscrowStatus.EXPIRED),
+      ).toBe(false);
 
       expect(() =>
         executeTransition({
@@ -521,26 +536,28 @@ describe("escrow state machine", () => {
           actorRole: ActorRole.SYSTEM,
           timestamp: now,
           reason: "Premature expiration",
-        })
+        }),
       ).toThrow(InvalidStateTransitionError);
     });
   });
 
   describe("assertTransition backward compatibility helper", () => {
     it("asserts valid transitions without error", () => {
-      expect(() => assertTransition(EscrowStatus.CREATED, EscrowStatus.AWAITING_PAYMENT)).not.toThrow();
+      expect(() =>
+        assertTransition(EscrowStatus.CREATED, EscrowStatus.AWAITING_PAYMENT),
+      ).not.toThrow();
     });
 
     it("throws InvalidStateTransitionError on invalid non-terminal transitions", () => {
-      expect(() => assertTransition(EscrowStatus.CREATED, EscrowStatus.DELIVERED)).toThrow(
-        InvalidStateTransitionError
-      );
+      expect(() =>
+        assertTransition(EscrowStatus.CREATED, EscrowStatus.DELIVERED),
+      ).toThrow(InvalidStateTransitionError);
     });
 
     it("throws TerminalStateError on terminal state transitions", () => {
-      expect(() => assertTransition(EscrowStatus.RELEASED, EscrowStatus.DISPUTED)).toThrow(
-        TerminalStateError
-      );
+      expect(() =>
+        assertTransition(EscrowStatus.RELEASED, EscrowStatus.DISPUTED),
+      ).toThrow(TerminalStateError);
     });
   });
 });

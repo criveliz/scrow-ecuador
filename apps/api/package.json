@@ -2,5 +2,18 @@
   "name": "@escrow-ecuador/api",
   "version": "0.1.0",
   "type": "module",
-  "private": true
+  "private": true,
+  "dependencies": {
+    "@escrow-ecuador/auth": "^0.1.0",
+    "@escrow-ecuador/database": "^0.1.0",
+    "@escrow-ecuador/domain": "^0.1.0",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/supertest": "^7.2.1",
+    "supertest": "^7.3.1"
+  }
 }

@@ -18,9 +18,11 @@ Postgres   Redis        Provider Adapters
 ```
 
 ## Initial deployment
+
 Use a modular monolith. Separate services only when operational scale requires it.
 
 ## Modules
+
 - auth
 - users
 - kyc
@@ -39,6 +41,7 @@ Use a modular monolith. Separate services only when operational scale requires i
 - admin
 
 ## Trust boundaries
+
 1. Browser is untrusted.
 2. Provider webhook is untrusted until verified.
 3. Provider API responses must be validated.
@@ -46,6 +49,7 @@ Use a modular monolith. Separate services only when operational scale requires i
 5. Financial state is controlled by the backend/domain layer.
 
 ## Provider adapter principle
+
 Use interfaces such as:
 
 ```ts

@@ -31,14 +31,22 @@ export class MockFiduciaryProvider implements FiduciaryProvider {
     return { confirmed: true, providerReference: "mock-funds-confirmed" };
   }
 
-  async requestRelease(input: { escrowId: string; amount: string; idempotencyKey: string }) {
+  async requestRelease(input: {
+    escrowId: string;
+    amount: string;
+    idempotencyKey: string;
+  }) {
     return {
       providerReference: `mock-release-${input.escrowId}`,
       status: "PENDING" as const,
     };
   }
 
-  async requestRefund(input: { escrowId: string; amount: string; idempotencyKey: string }) {
+  async requestRefund(input: {
+    escrowId: string;
+    amount: string;
+    idempotencyKey: string;
+  }) {
     return {
       providerReference: `mock-refund-${input.escrowId}`,
       status: "PENDING" as const,

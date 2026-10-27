@@ -19,6 +19,7 @@ audit_logs
 notifications
 
 Money:
+
 - use NUMERIC(20,2) for USD amounts in PostgreSQL
 - never use JavaScript floating-point arithmetic for financial calculations
 
